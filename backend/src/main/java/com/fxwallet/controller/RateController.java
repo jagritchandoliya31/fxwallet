@@ -20,4 +20,9 @@ public class RateController {
     public ResponseEntity<List<RateResponse>> getAllRates() {
         return ResponseEntity.ok(rateService.getAllRates());
     }
+
+    @GetMapping("/{code}/history")
+    public ResponseEntity<List<com.fxwallet.entity.RateHistory>> getRateHistory(@PathVariable String code) {
+        return ResponseEntity.ok(rateService.getRateHistory(code));
+    }
 }

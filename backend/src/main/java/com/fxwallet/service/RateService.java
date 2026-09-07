@@ -123,6 +123,11 @@ public class RateService {
         return sign + pct.setScale(2, RoundingMode.HALF_UP) + "%";
     }
 
+    @Transactional(readOnly = true)
+    public List<com.fxwallet.entity.RateHistory> getRateHistory(String code) {
+        return rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc(code.toUpperCase());
+    }
+
     public void initializeRates() {
         fetchAndPersistRates();
     }

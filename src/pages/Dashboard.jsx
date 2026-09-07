@@ -1,0 +1,252 @@
+import { useEffect, useState } from 'react';
+import { walletApi } from '../api/apiClient';
+import { ratesApi } from '../api/ratesApi';
+import { portfolioApi } from '../api/portfolioApi';
+import { transactionApi } from '../api/transactionApi';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const money = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(value || 0);
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const [wallet, setWallet] = useState(null);
+  const [rates, setRates] = useState([]);
+  const [portfolio, setPortfolio] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [walletRes, ratesRes, portfolioRes, txRes] = await Promise.all([
+          walletApi.getWallet().catch(() => null),
+          ratesApi.getAllRates().catch(() => []),
+          portfolioApi.getPortfolio().catch(() => null),
+          transactionApi.getTransactions({ page: 0, size: 4 }).catch(() => ({ content: [] })),
+        ]);
+        if (cancelled) return;
+        if (walletRes) setWallet(walletRes);
+        if (ratesRes && ratesRes.length) setRates(ratesRes);
+        if (portfolioRes) setPortfolio(portfolioRes);
+        if (txRes?.content) setTransactions(txRes.content);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading) return <div className="loading">Loading...</div>;
+
+  const portfolioValue = portfolio?.totalPortfolioValue || 0;
+  const profit = portfolio?.totalProfitLoss || 0;
+
+  return (
+    <>
+      <header>
+        <div>
+          <p className="eyebrow">GOOD MORNING</p>
+          <h1>Your currency dashboard</h1>
+        </div>
+        <div className="avatar">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</div>
+      </header>
+      <section className="stats">
+        <article>
+          <p>Virtual INR wallet</p>
+          <h2>{wallet ? money(wallet.balance) : '₹0'}</h2>
+          <span>Available to trade</span>
+        </article>
+        <article>
+          <p>Portfolio value</p>
+          <h2>{money(portfolioValue)}</h2>
+          <span className="positive">↑ 1.67% this month</span>
+        </article>
+        <article>
+          <p>Overall profit / loss</p>
+          <h2 className={profit >= 0 ? 'positive' : 'negative'}>
+            {profit >= 0 ? '+' : ''}{money(profit)}
+          </h2>
+          <span>Against your average buy rate</span>
+        </article>
+      </section>
+      <section className="content-grid">
+        <div className="panel market">
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow">MARKET</p>
+              <h2>Live exchange rates</h2>
+            </div>
+            <Link to="/market" className="trade-button" style={{ width: 'auto', padding: '8px 16px', fontSize: 13 }}>View all</Link>
+          </div>
+          {rates.slice(0, 5).map((r) => (
+            <div className="rate-row" key={r.code}>
+              <div className="currency-icon">{r.symbol}</div>
+              <div>
+                <strong>{r.code}/INR</strong>
+                <small>{r.name}</small>
+              </div>
+              <div className="rate-price">
+                <strong>{money(r.rate)}</strong>
+                <small className={String(r.change).startsWith('+') ? 'positive' : 'negative'}>
+                  {r.change}
+                </small>
+              </div>
+            </div>
+          ))}
+        </div>
+        <TradePanel rates={rates} onTradeComplete={() => {}} />
+      </section>
+      <section className="panel holdings" id="portfolio">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">PORTFOLIO</p>
+            <h2>Your holdings</h2>
+          </div>
+          <Link to="/portfolio" className="trade-button" style={{ width: 'auto', padding: '8px 16px', fontSize: 13 }}>Full portfolio</Link>
+        </div>
+        <div className="holding-grid">
+          {portfolio?.holdings?.length ? (
+            portfolio.holdings.map((h) => (
+              <article key={h.code}>
+                <div>
+                  <span className="currency-icon">{h.symbol}</span>
+                  <strong>{h.code}</strong>
+                </div>
+                <h3>{Number(h.quantity).toFixed(2)} {h.code}</h3>
+                <p>{money(h.currentValue)}</p>
+                <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
+                  {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
+                </small>
+              </article>
+            ))
+          ) : (
+            <p className="empty-state">No holdings yet. Start trading to build your portfolio.</p>
+          )}
+        </div>
+      </section>
+      <section className="panel transactions" id="transactions">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">ACTIVITY</p>
+            <h2>Recent transactions</h2>
+          </div>
+          <Link to="/transactions" className="trade-button" style={{ width: 'auto', padding: '8px 16px', fontSize: 13 }}>View all</Link>
+        </div>
+        {transactions.length === 0 ? (
+          <p className="empty-state">No transactions yet.</p>
+        ) : (
+          transactions.map((tx, index) => (
+            <div className="transaction" key={`${tx.id}-${index}`}>
+              <span className={tx.type === 'BUY' ? 'buy-badge' : 'sell-badge'}>{tx.type}</span>
+              <div>
+                <strong>{tx.currencyCode}</strong>
+                <small>{tx.currencyName}</small>
+              </div>
+              <div className="rate-price">
+                <strong>{money(tx.inrAmount)}</strong>
+                <small>{Number(tx.quantity).toFixed(2)} units</small>
+              </div>
+              <small className={tx.realizedPl >= 0 ? 'positive' : 'negative'}>
+                {tx.realizedPl >= 0 ? '+' : ''}{money(tx.realizedPl)}
+              </small>
+              <small>{new Date(tx.timestamp).toLocaleString()}</small>
+            </div>
+          ))
+        )}
+      </section>
+    </>
+  );
+}
+
+function TradePanel({ rates, onTradeComplete }) {
+  const [selected, setSelected] = useState('USD');
+  const [amount, setAmount] = useState('10000');
+  const [mode, setMode] = useState('buy');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const numericalAmount = Number(amount) || 0;
+  const rate = Number(rates.find((r) => r.code === selected)?.rate || 0);
+  const preview = mode === 'buy' ? numericalAmount / rate : numericalAmount * rate;
+
+  const submitTrade = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    if (numericalAmount <= 0) return setMessage('Enter an amount greater than zero.');
+    setSubmitting(true);
+    try {
+      if (mode === 'buy') {
+        const res = await transactionApi.buy({ currencyCode: selected, amountInr: numericalAmount });
+        setMessage(`Bought ${Number(res.quantity).toFixed(2)} ${selected} in your virtual portfolio.`);
+      } else {
+        const res = await transactionApi.sell({ currencyCode: selected, quantity: numericalAmount });
+        setMessage(`Sold ${Number(res.quantity).toFixed(2)} ${selected}; ${money(res.inrAmount)} added to wallet.`);
+      }
+      onTradeComplete?.();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Transaction failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="panel trade" id="trade" onSubmit={submitTrade}>
+      <div className="panel-title">
+        <div>
+          <p className="eyebrow">QUICK TRADE</p>
+          <h2>Buy or sell currency</h2>
+        </div>
+      </div>
+      <div className="tabs">
+        <button type="button" onClick={() => setMode('buy')} className={mode === 'buy' ? 'selected' : ''}>
+          Buy
+        </button>
+        <button type="button" onClick={() => setMode('sell')} className={mode === 'sell' ? 'selected' : ''}>
+          Sell
+        </button>
+      </div>
+      <label>
+        Currency
+        <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+          {rates.map((r) => (
+            <option key={r.code} value={r.code}>
+              {r.code}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {mode === 'buy' ? 'Amount in INR' : `Amount in ${selected}`}
+        <input
+          type="number"
+          min="0"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </label>
+      <div className="calculation">
+        {mode === 'buy' ? (
+          <>You receive <strong>{preview.toFixed(2)} {selected}</strong></>
+        ) : (
+          <>You receive <strong>{money(preview)}</strong></>
+        )}
+        <small>Rate: 1 {selected} = {money(rate)}</small>
+      </div>
+      <button type="submit" className="trade-button" disabled={submitting}>
+        {submitting ? 'Processing...' : mode === 'buy' ? `Buy ${selected}` : `Sell ${selected}`}
+      </button>
+      {message && <p className={`message ${message.toLowerCase().includes('failed') || message.toLowerCase().includes('insufficient') ? 'error' : ''}`}>{message}</p>}
+    </form>
+  );
+}

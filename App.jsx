@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { walletApi } from './src/api/apiClient';
@@ -7,6 +7,12 @@ import { portfolioApi } from './src/api/portfolioApi';
 import { transactionApi } from './src/api/transactionApi';
 import { alertsApi } from './src/api/alertsApi';
 import { advisorApi } from './src/api/advisorApi';
+import Dashboard from './src/pages/Dashboard';
+import Market from './src/pages/Market';
+import Portfolio from './src/pages/Portfolio';
+import Transactions from './src/pages/Transactions';
+import Alerts from './src/pages/Alerts';
+import Advisor from './src/pages/Advisor';
 
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -71,241 +77,6 @@ function LoginForm({ mode }) {
   );
 }
 
-function Dashboard() {
-  const { user } = useAuth();
-  const [wallet, setWallet] = useState(null);
-  const [rates, setRates] = useState(defaultRates);
-  const [portfolio, setPortfolio] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [walletRes, ratesRes, portfolioRes, txRes] = await Promise.all([
-          walletApi.getWallet().catch(() => null),
-          ratesApi.getAllRates().catch(() => []),
-          portfolioApi.getPortfolio().catch(() => null),
-          transactionApi.getTransactions({ page: 0, size: 4 }).catch(() => ({ content: [] })),
-        ]);
-        if (cancelled) return;
-        if (walletRes) setWallet(walletRes);
-        if (ratesRes && ratesRes.length) {
-          const map = {};
-          ratesRes.forEach((r) => {
-            map[r.code] = { name: r.name, symbol: r.symbol, rate: Number(r.rate), change: r.change };
-          });
-          setRates(map);
-        }
-        if (portfolioRes) setPortfolio(portfolioRes);
-        if (txRes?.content) setTransactions(txRes.content);
-      } catch {
-        // ignore
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) return <div className="loading">Loading...</div>;
-
-  const portfolioValue = portfolio?.totalPortfolioValue || 0;
-  const profit = portfolio?.totalProfitLoss || 0;
-
-  return (
-    <>
-      <header>
-        <div>
-          <p className="eyebrow">GOOD MORNING</p>
-          <h1>Your currency dashboard</h1>
-        </div>
-        <div className="avatar">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</div>
-      </header>
-      <section className="stats">
-        <article>
-          <p>Virtual INR wallet</p>
-          <h2>{wallet ? money(wallet.balance) : '₹0'}</h2>
-          <span>Available to trade</span>
-        </article>
-        <article>
-          <p>Portfolio value</p>
-          <h2>{money(portfolioValue)}</h2>
-          <span className="positive">↑ 1.67% this month</span>
-        </article>
-        <article>
-          <p>Overall profit / loss</p>
-          <h2 className={profit >= 0 ? 'positive' : 'negative'}>
-            {profit >= 0 ? '+' : ''}{money(profit)}
-          </h2>
-          <span>Against your average buy rate</span>
-        </article>
-      </section>
-      <section className="content-grid">
-        <div className="panel market">
-          <div className="panel-title">
-            <div>
-              <p className="eyebrow">MARKET</p>
-              <h2>Live exchange rates</h2>
-            </div>
-            <button>View all</button>
-          </div>
-          {Object.entries(rates).map(([code, item]) => (
-            <div className="rate-row" key={code}>
-              <div className="currency-icon">{item.symbol}</div>
-              <div>
-                <strong>{code}/INR</strong>
-                <small>{item.name}</small>
-              </div>
-              <div className="rate-price">
-                <strong>{money(item.rate)}</strong>
-                <small className={item.change.startsWith('+') ? 'positive' : 'negative'}>
-                  {item.change}
-                </small>
-              </div>
-            </div>
-          ))}
-        </div>
-        <TradePanel rates={rates} onTradeComplete={() => {}} />
-      </section>
-      <section className="panel holdings" id="portfolio">
-        <div className="panel-title">
-          <div>
-            <p className="eyebrow">PORTFOLIO</p>
-            <h2>Your holdings</h2>
-          </div>
-          <button>Full portfolio</button>
-        </div>
-        <div className="holding-grid">
-          {portfolio?.holdings?.length ? (
-            portfolio.holdings.map((h) => (
-              <article key={h.code}>
-                <div>
-                  <span className="currency-icon">{h.symbol}</span>
-                  <strong>{h.code}</strong>
-                </div>
-                <h3>{Number(h.quantity).toFixed(2)} {h.code}</h3>
-                <p>{money(h.currentValue)}</p>
-                <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
-                  {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
-                </small>
-              </article>
-            ))
-          ) : (
-            <p className="empty-state">No holdings yet. Start trading to build your portfolio.</p>
-          )}
-        </div>
-      </section>
-      <section className="panel transactions" id="transactions">
-        <div className="panel-title">
-          <div>
-            <p className="eyebrow">ACTIVITY</p>
-            <h2>Recent transactions</h2>
-          </div>
-        </div>
-        {transactions.length === 0 ? (
-          <p className="empty-state">No transactions yet.</p>
-        ) : (
-          transactions.map((tx, index) => (
-            <div className="transaction" key={`${tx.id}-${index}`}>
-              <span className={tx.type === 'BUY' ? 'buy-badge' : 'sell-badge'}>{tx.type}</span>
-              <strong>{tx.currencyCode}</strong>
-              <span>{money(tx.inrAmount)}</span>
-              <small>{new Date(tx.timestamp).toLocaleString()}</small>
-            </div>
-          ))
-        )}
-      </section>
-    </>
-  );
-}
-
-function TradePanel({ rates, onTradeComplete }) {
-  const { user } = useAuth();
-  const [selected, setSelected] = useState('USD');
-  const [amount, setAmount] = useState('10000');
-  const [mode, setMode] = useState('buy');
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const numericalAmount = Number(amount) || 0;
-  const rate = Number(rates[selected]?.rate || 0);
-  const preview = mode === 'buy' ? numericalAmount / rate : numericalAmount * rate;
-
-  const submitTrade = async (e) => {
-    e.preventDefault();
-    setMessage('');
-    if (numericalAmount <= 0) return setMessage('Enter an amount greater than zero.');
-    setSubmitting(true);
-    try {
-      if (mode === 'buy') {
-        const res = await transactionApi.buy({ currencyCode: selected, amountInr: numericalAmount });
-        setMessage(`Bought ${Number(res.quantity).toFixed(2)} ${selected} in your virtual portfolio.`);
-      } else {
-        const res = await transactionApi.sell({ currencyCode: selected, quantity: numericalAmount });
-        setMessage(`Sold ${Number(res.quantity).toFixed(2)} ${selected}; ${money(res.inrAmount)} added to wallet.`);
-      }
-      onTradeComplete?.();
-    } catch (err) {
-      setMessage(err.response?.data?.message || 'Transaction failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form className="panel trade" id="trade" onSubmit={submitTrade}>
-      <div className="panel-title">
-        <div>
-          <p className="eyebrow">QUICK TRADE</p>
-          <h2>Buy or sell currency</h2>
-        </div>
-      </div>
-      <div className="tabs">
-        <button type="button" onClick={() => setMode('buy')} className={mode === 'buy' ? 'selected' : ''}>
-          Buy
-        </button>
-        <button type="button" onClick={() => setMode('sell')} className={mode === 'sell' ? 'selected' : ''}>
-          Sell
-        </button>
-      </div>
-      <label>
-        Currency
-        <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-          {Object.keys(rates).map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        {mode === 'buy' ? 'Amount in INR' : `Amount in ${selected}`}
-        <input
-          type="number"
-          min="0"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </label>
-      <div className="calculation">
-        {mode === 'buy' ? (
-          <>You receive <strong>{preview.toFixed(2)} {selected}</strong></>
-        ) : (
-          <>You receive <strong>{money(preview)}</strong></>
-        )}
-        <small>Rate: 1 {selected} = {money(rate)}</small>
-      </div>
-      <button type="submit" className="trade-button" disabled={submitting}>
-        {submitting ? 'Processing...' : mode === 'buy' ? `Buy ${selected}` : `Sell ${selected}`}
-      </button>
-      {message && <p className={`message ${message.toLowerCase().includes('failed') || message.toLowerCase().includes('insufficient') ? 'error' : ''}`}>{message}</p>}
-    </form>
-  );
-}
-
 function AppContent() {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -342,16 +113,25 @@ function AppContent() {
         <div className="brand"><span>FX</span>Wallet</div>
         <p className="sim-label">VIRTUAL TRADING SIMULATOR</p>
         <nav>
-          <Link className="active" to="/">▦ Dashboard</Link>
-          <Link to="/">◈ Portfolio</Link>
-          <Link to="/">⇄ Buy & Sell</Link>
-          <Link to="/">▤ Transactions</Link>
+          <Link className={location.pathname === '/' ? 'active' : ''} to="/">▦ Dashboard</Link>
+          <Link className={location.pathname === '/market' ? 'active' : ''} to="/market">📈 Market</Link>
+          <Link className={location.pathname === '/portfolio' ? 'active' : ''} to="/portfolio">◈ Portfolio</Link>
+          <Link className={location.pathname === '/transactions' ? 'active' : ''} to="/transactions">▤ Transactions</Link>
+          <Link className={location.pathname === '/alerts' ? 'active' : ''} to="/alerts">🔔 Alerts</Link>
+          <Link className={location.pathname === '/advisor' ? 'active' : ''} to="/advisor">🧠 Advisor</Link>
           <a href="#profile" onClick={(e) => { e.preventDefault(); logout(); }}>◉ Profile / Logout</a>
         </nav>
         <div className="demo-note">Demo only<br /><strong>Not real currency or payments.</strong></div>
       </aside>
       <main>
-        <Dashboard />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/market" element={<Market />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/advisor" element={<Advisor />} />
+        </Routes>
       </main>
     </div>
   );
