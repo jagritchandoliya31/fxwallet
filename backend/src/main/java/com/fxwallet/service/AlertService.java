@@ -9,6 +9,7 @@ import com.fxwallet.repository.CurrencyRepository;
 import com.fxwallet.repository.RateAlertRepository;
 import com.fxwallet.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,8 +65,15 @@ public class AlertService {
     }
 
     @Transactional
-    public void checkAndTriggerAlerts() {
-        User user = getCurrentUser();
+    @Scheduled(fixedRate = 300000)
+    public void checkAndTriggerAllAlerts() {
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            checkAndTriggerAlertsForUser(user);
+        }
+    }
+
+    private void checkAndTriggerAlertsForUser(User user) {
         List<RateAlert> alerts = rateAlertRepository.findByUserId(user.getId());
         for (RateAlert alert : alerts) {
             if (alert.isTriggered()) continue;

@@ -5,6 +5,8 @@ import { walletApi } from './src/api/apiClient';
 import { ratesApi } from './src/api/ratesApi';
 import { portfolioApi } from './src/api/portfolioApi';
 import { transactionApi } from './src/api/transactionApi';
+import { alertsApi } from './src/api/alertsApi';
+import { advisorApi } from './src/api/advisorApi';
 
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -12,12 +14,6 @@ const money = (value) =>
     currency: 'INR',
     maximumFractionDigits: 2,
   }).format(value || 0);
-
-const defaultRates = {
-  USD: { name: 'US Dollar', symbol: '$', rate: 87.12, change: '+0.18%' },
-  EUR: { name: 'Euro', symbol: '€', rate: 94.45, change: '-0.07%' },
-  GBP: { name: 'British Pound', symbol: '£', rate: 110.6, change: '+0.31%' },
-};
 
 function LoginForm({ mode }) {
   const { login, register, error, setError, loading } = useAuth();

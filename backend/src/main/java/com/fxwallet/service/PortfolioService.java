@@ -53,7 +53,6 @@ public class PortfolioService {
         return new PortfolioResponse(
                 totalPortfolioValue,
                 totalInvested,
-                totalPortfolioValue,
                 totalPl,
                 plPct,
                 holdingResponses

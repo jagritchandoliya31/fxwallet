@@ -2,9 +2,9 @@ spring:
   application:
     name: fxwallet
   datasource:
-    url: jdbc:mysql://localhost:3306/fxwallet?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: root
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/fxwallet?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -26,8 +26,10 @@ app:
     secret: ${JWT_SECRET:change-me-to-a-very-long-random-string-for-production-use}
     expiration-ms: 86400000
   external:
-    rates-api-url: https://api.exchangerate-api.com/v4/latest/USD
+    rates-api-url: ${EXCHANGE_RATES_API_URL:https://api.exchangerate-api.com/v4/latest/USD}
     api-key: ${EXCHANGE_RATE_API_KEY:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
 logging:
   level:

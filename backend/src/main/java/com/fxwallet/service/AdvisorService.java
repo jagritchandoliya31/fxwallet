@@ -80,7 +80,20 @@ public class AdvisorService {
                 .map(h -> h.getRate().subtract(avg).pow(2))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(histories.size()), 6, RoundingMode.HALF_UP);
-        return new BigDecimal(Math.sqrt(variance.doubleValue())).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal stdDev = sqrt(variance, 6);
+        return stdDev;
+    }
+
+    private BigDecimal sqrt(BigDecimal value, int scale) {
+        if (value.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
+        BigDecimal x0 = BigDecimal.ZERO;
+        BigDecimal x1 = value.divide(BigDecimal.valueOf(2), scale, RoundingMode.HALF_UP);
+        while (!x0.equals(x1)) {
+            x0 = x1;
+            x1 = value.divide(x0, scale, RoundingMode.HALF_UP);
+            x1 = x0.add(x1).divide(BigDecimal.valueOf(2), scale, RoundingMode.HALF_UP);
+        }
+        return x1;
     }
 
     private BigDecimal calculateScore(BigDecimal current, BigDecimal avg, BigDecimal change, BigDecimal volatility) {
