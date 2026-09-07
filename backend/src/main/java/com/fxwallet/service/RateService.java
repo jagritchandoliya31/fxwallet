@@ -53,7 +53,7 @@ public class RateService {
             List<Currency> currencies = currencyRepository.findByActiveTrue();
             for (Currency currency : currencies) {
                 JsonNode rateNode = ratesNode.get(currency.getCode());
-                if (rateNode != null && !rateNode.isMissingNode()) {
+                if (rateNode != null && !rateNode.isMissingNode() && rateNode.isNumber() && !rateNode.isNull()) {
                     BigDecimal rate = BigDecimal.valueOf(rateNode.asDouble())
                             .setScale(6, RoundingMode.HALF_UP);
                     currentRates.put(currency.getCode(), rate);

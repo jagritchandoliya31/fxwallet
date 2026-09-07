@@ -8,6 +8,12 @@ const money = (value) =>
     maximumFractionDigits: 2,
   }).format(value || 0);
 
+const formatQuantity = (value) => {
+  const num = Number(value);
+  if (Number.isInteger(num)) return String(num);
+  return String(num).replace(/\.?0+$/, '');
+};
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +62,7 @@ export default function Transactions() {
                 </div>
                 <div className="rate-price">
                   <strong>{money(tx.inrAmount)}</strong>
-                  <small>{Number(tx.quantity).toFixed(2)} units</small>
+                  <small>{formatQuantity(tx.quantity)} units</small>
                 </div>
                 <small className={tx.realizedPl >= 0 ? 'positive' : 'negative'}>
                   {tx.realizedPl >= 0 ? '+' : ''}{money(tx.realizedPl)}

@@ -13,6 +13,12 @@ const money = (value) =>
     maximumFractionDigits: 2,
   }).format(value || 0);
 
+const formatQuantity = (value) => {
+  const num = Number(value);
+  if (Number.isInteger(num)) return String(num);
+  return String(num).replace(/\.?0+$/, '');
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [wallet, setWallet] = useState(null);
@@ -20,6 +26,17 @@ export default function Dashboard() {
   const [portfolio, setPortfolio] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const refresh = async () => {
+    const [walletRes, portfolioRes, txRes] = await Promise.all([
+      walletApi.getWallet().catch(() => null),
+      portfolioApi.getPortfolio().catch(() => null),
+      transactionApi.getTransactions({ page: 0, size: 4 }).catch(() => ({ content: [] })),
+    ]);
+    if (walletRes) setWallet(walletRes);
+    if (portfolioRes) setPortfolio(portfolioRes);
+    if (txRes?.content) setTransactions(txRes.content);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +121,7 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-        <TradePanel rates={rates} onTradeComplete={() => {}} />
+        <TradePanel rates={rates} onTradeComplete={refresh} />
       </section>
       <section className="panel holdings" id="portfolio">
         <div className="panel-title">
@@ -122,7 +139,7 @@ export default function Dashboard() {
                   <span className="currency-icon">{h.symbol}</span>
                   <strong>{h.code}</strong>
                 </div>
-                <h3>{Number(h.quantity).toFixed(2)} {h.code}</h3>
+                <h3>{formatQuantity(h.quantity)} {h.code}</h3>
                 <p>{money(h.currentValue)}</p>
                 <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
                   {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
@@ -154,7 +171,7 @@ export default function Dashboard() {
               </div>
               <div className="rate-price">
                 <strong>{money(tx.inrAmount)}</strong>
-                <small>{Number(tx.quantity).toFixed(2)} units</small>
+                  <small>{formatQuantity(tx.quantity)} units</small>
               </div>
               <small className={tx.realizedPl >= 0 ? 'positive' : 'negative'}>
                 {tx.realizedPl >= 0 ? '+' : ''}{money(tx.realizedPl)}
@@ -181,16 +198,18 @@ function TradePanel({ rates, onTradeComplete }) {
 
   const submitTrade = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setMessage('');
+    const numericalAmount = Number(amount) || 0;
     if (numericalAmount <= 0) return setMessage('Enter an amount greater than zero.');
     setSubmitting(true);
     try {
       if (mode === 'buy') {
         const res = await transactionApi.buy({ currencyCode: selected, amountInr: numericalAmount });
-        setMessage(`Bought ${Number(res.quantity).toFixed(2)} ${selected} in your virtual portfolio.`);
+        setMessage(`Bought ${formatQuantity(res.quantity)} ${selected} in your virtual portfolio.`);
       } else {
         const res = await transactionApi.sell({ currencyCode: selected, quantity: numericalAmount });
-        setMessage(`Sold ${Number(res.quantity).toFixed(2)} ${selected}; ${money(res.inrAmount)} added to wallet.`);
+        setMessage(`Sold ${formatQuantity(res.quantity)} ${selected}; ${money(res.inrAmount)} added to wallet.`);
       }
       onTradeComplete?.();
     } catch (err) {

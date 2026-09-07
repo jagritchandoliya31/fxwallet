@@ -8,6 +8,12 @@ const money = (value) =>
     maximumFractionDigits: 2,
   }).format(value || 0);
 
+const formatQuantity = (value) => {
+  const num = Number(value);
+  if (Number.isInteger(num)) return String(num);
+  return String(num).replace(/\.?0+$/, '');
+};
+
 export default function Portfolio() {
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +77,7 @@ export default function Portfolio() {
                   <span className="currency-icon">{h.symbol}</span>
                   <strong>{h.code}</strong>
                 </div>
-                <h3>{Number(h.quantity).toFixed(2)} {h.code}</h3>
+                <h3>{formatQuantity(h.quantity)} {h.code}</h3>
                 <p>{money(h.currentValue)}</p>
                 <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
                   {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
