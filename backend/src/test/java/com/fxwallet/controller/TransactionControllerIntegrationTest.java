@@ -10,6 +10,7 @@ import com.fxwallet.entity.User;
 import com.fxwallet.entity.Wallet;
 import com.fxwallet.repository.CurrencyRepository;
 import com.fxwallet.repository.HoldingRepository;
+import com.fxwallet.repository.RateAlertRepository;
 import com.fxwallet.repository.TransactionRepository;
 import com.fxwallet.repository.UserRepository;
 import com.fxwallet.repository.WalletRepository;
@@ -57,6 +58,9 @@ public class TransactionControllerIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    @Autowired
+    private RateAlertRepository rateAlertRepository;
+
     @MockBean
     private com.fxwallet.service.RateService rateService;
 
@@ -69,6 +73,7 @@ public class TransactionControllerIntegrationTest {
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
         walletRepository.deleteAll();
+        rateAlertRepository.deleteAll();
         userRepository.deleteAll();
         currencyRepository.deleteAll();
 
