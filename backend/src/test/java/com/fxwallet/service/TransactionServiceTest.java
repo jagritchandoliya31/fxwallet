@@ -3,6 +3,7 @@ package com.fxwallet.service;
 import com.fxwallet.dto.BuyRequest;
 import com.fxwallet.dto.SellRequest;
 import com.fxwallet.entity.*;
+import com.fxwallet.exception.ExchangeRateUnavailableException;
 import com.fxwallet.exception.InsufficientBalanceException;
 import com.fxwallet.exception.InsufficientHoldingsException;
 import com.fxwallet.exception.ResourceNotFoundException;
@@ -23,6 +24,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,6 +70,57 @@ public class TransactionServiceTest {
     }
 
     @Test
+    public void buy_shouldThrowWhenRateIsZero() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(BigDecimal.ZERO);
+
+        assertThrows(ExchangeRateUnavailableException.class,
+                () -> transactionService.buy(new BuyRequest("USD", new BigDecimal("1000"))));
+        verify(walletRepository, never()).findByUserId(anyLong());
+        verify(holdingRepository, never()).save(any(Holding.class));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
+    public void buy_shouldThrowWhenRateIsNull() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(null);
+
+        assertThrows(ExchangeRateUnavailableException.class,
+                () -> transactionService.buy(new BuyRequest("USD", new BigDecimal("1000"))));
+        verify(walletRepository, never()).findByUserId(anyLong());
+        verify(holdingRepository, never()).save(any(Holding.class));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
+    public void sell_shouldThrowWhenRateIsZero() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(BigDecimal.ZERO);
+
+        assertThrows(ExchangeRateUnavailableException.class,
+                () -> transactionService.sell(new SellRequest("USD", new BigDecimal("10"))));
+        verify(walletRepository, never()).findByUserId(anyLong());
+        verify(holdingRepository, never()).save(any(Holding.class));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
     public void sell_shouldThrowWhenInsufficientHoldings() {
         Currency currency = new Currency();
         currency.setId(1L);
@@ -89,5 +142,22 @@ public class TransactionServiceTest {
         when(rateService.getCurrentRate("USD")).thenReturn(new BigDecimal("87"));
 
         assertThrows(InsufficientHoldingsException.class, () -> transactionService.sell(new SellRequest("USD", new BigDecimal("20"))));
+    }
+
+    @Test
+    public void sell_shouldThrowWhenRateIsNull() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(null);
+
+        assertThrows(ExchangeRateUnavailableException.class,
+                () -> transactionService.sell(new SellRequest("USD", new BigDecimal("10"))));
+        verify(walletRepository, never()).findByUserId(anyLong());
+        verify(holdingRepository, never()).save(any(Holding.class));
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 }

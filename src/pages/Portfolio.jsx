@@ -48,7 +48,7 @@ export default function Portfolio() {
       <section className="stats">
         <article>
           <p>Total portfolio value</p>
-          <h2>{money(portfolio?.totalPortfolioValue)}</h2>
+          <h2>{portfolio?.totalPortfolioValue == null ? 'Unavailable' : money(portfolio.totalPortfolioValue)}</h2>
         </article>
         <article>
           <p>Total invested</p>
@@ -56,10 +56,10 @@ export default function Portfolio() {
         </article>
         <article>
           <p>Overall profit / loss</p>
-          <h2 className={portfolio?.totalProfitLoss >= 0 ? 'positive' : 'negative'}>
-            {portfolio?.totalProfitLoss >= 0 ? '+' : ''}{money(portfolio?.totalProfitLoss)}
+          <h2 className={portfolio?.totalProfitLoss == null ? '' : portfolio.totalProfitLoss >= 0 ? 'positive' : 'negative'}>
+            {portfolio?.totalProfitLoss == null ? 'Unavailable' : `${portfolio.totalProfitLoss >= 0 ? '+' : ''}${money(portfolio.totalProfitLoss)}`}
           </h2>
-          <small>{portfolio?.profitLossPercentage?.toFixed(2)}%</small>
+          <small>{portfolio?.profitLossPercentage == null ? 'Rate unavailable' : `${portfolio.profitLossPercentage.toFixed(2)}%`}</small>
         </article>
       </section>
       <section className="panel">
@@ -78,10 +78,18 @@ export default function Portfolio() {
                   <strong>{h.code}</strong>
                 </div>
                 <h3>{formatQuantity(h.quantity)} {h.code}</h3>
-                <p>{money(h.currentValue)}</p>
-                <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
-                  {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
-                </small>
+                {h.currentValue == null ? (
+                  <p className="message error">Valuation unavailable</p>
+                ) : (
+                  <p>{money(h.currentValue)}</p>
+                )}
+                {h.profitLoss == null ? (
+                  <small>Rate unavailable</small>
+                ) : (
+                  <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
+                    {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
+                  </small>
+                )}
               </article>
             ))}
           </div>

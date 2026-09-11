@@ -92,6 +92,28 @@ public class AlertServiceTest {
     }
 
     @Test
+    public void createAlert_shouldRejectDuplicateActiveAlert() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+
+        RateAlert existingAlert = new RateAlert();
+        existingAlert.setId(1L);
+        existingAlert.setUser(new User());
+        existingAlert.setCurrency(currency);
+        existingAlert.setTargetRate(new BigDecimal("90"));
+        existingAlert.setTriggered(false);
+        when(rateAlertRepository.findByUserIdAndCurrencyCode(1L, "USD"))
+                .thenReturn(List.of(existingAlert));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> alertService.createAlert(new AlertRequest("USD", new BigDecimal("95"))));
+        verify(rateAlertRepository, never()).save(any(RateAlert.class));
+    }
+
+    @Test
     public void deleteAlert_shouldDeleteWhenOwned() {
         RateAlert alert = new RateAlert();
         alert.setId(1L);

@@ -61,6 +61,64 @@ public class PortfolioServiceTest {
     }
 
     @Test
+    public void getPortfolio_shouldMarkValuationUnavailableWhenRateIsNull() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+
+        Holding holding = new Holding();
+        holding.setId(1L);
+        holding.setUser(new User());
+        holding.setCurrency(currency);
+        holding.setQuantity(new BigDecimal("100"));
+        holding.setAvgBuyRate(new BigDecimal("80"));
+
+        when(holdingRepository.findByUserId(1L)).thenReturn(List.of(holding));
+        when(rateService.getCurrentRate("USD")).thenReturn(null);
+
+        PortfolioResponse response = portfolioService.getPortfolio();
+
+        assertEquals(new BigDecimal("8000.0000"), response.totalInvested());
+        assertNull(response.totalPortfolioValue());
+        assertNull(response.totalProfitLoss());
+        assertNull(response.profitLossPercentage());
+        assertEquals(new BigDecimal("100"), response.holdings().get(0).quantity());
+        assertNull(response.holdings().get(0).currentValue());
+        assertNull(response.holdings().get(0).profitLoss());
+    }
+
+    @Test
+    public void getPortfolio_shouldMarkValuationUnavailableWhenRateIsZero() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+
+        Holding holding = new Holding();
+        holding.setId(1L);
+        holding.setUser(new User());
+        holding.setCurrency(currency);
+        holding.setQuantity(new BigDecimal("100"));
+        holding.setAvgBuyRate(new BigDecimal("80"));
+
+        when(holdingRepository.findByUserId(1L)).thenReturn(List.of(holding));
+        when(rateService.getCurrentRate("USD")).thenReturn(BigDecimal.ZERO);
+
+        PortfolioResponse response = portfolioService.getPortfolio();
+
+        assertEquals(new BigDecimal("8000.0000"), response.totalInvested());
+        assertNull(response.totalPortfolioValue());
+        assertNull(response.totalProfitLoss());
+        assertNull(response.profitLossPercentage());
+        assertEquals(new BigDecimal("100"), response.holdings().get(0).quantity());
+        assertNull(response.holdings().get(0).currentValue());
+        assertNull(response.holdings().get(0).profitLoss());
+    }
+
+    @Test
     public void getPortfolio_shouldCalculateValues() {
         Currency currency = new Currency();
         currency.setId(1L);
