@@ -65,8 +65,8 @@ export default function Dashboard() {
 
   if (loading) return <div className="loading">Loading...</div>;
 
-  const portfolioValue = portfolio?.totalPortfolioValue || 0;
-  const profit = portfolio?.totalProfitLoss || 0;
+  const portfolioValue = portfolio?.totalPortfolioValue;
+  const profit = portfolio?.totalProfitLoss;
 
   return (
     <>
@@ -85,13 +85,13 @@ export default function Dashboard() {
         </article>
         <article>
           <p>Portfolio value</p>
-          <h2>{money(portfolioValue)}</h2>
+          <h2>{portfolioValue == null ? 'Unavailable' : money(portfolioValue)}</h2>
           <span className="positive">↑ 1.67% this month</span>
         </article>
         <article>
           <p>Overall profit / loss</p>
-          <h2 className={profit >= 0 ? 'positive' : 'negative'}>
-            {profit >= 0 ? '+' : ''}{money(profit)}
+          <h2 className={profit == null ? '' : profit >= 0 ? 'positive' : 'negative'}>
+            {profit == null ? 'Unavailable' : `${profit >= 0 ? '+' : ''}${money(profit)}`}
           </h2>
           <span>Against your average buy rate</span>
         </article>
@@ -140,10 +140,18 @@ export default function Dashboard() {
                   <strong>{h.code}</strong>
                 </div>
                 <h3>{formatQuantity(h.quantity)} {h.code}</h3>
-                <p>{money(h.currentValue)}</p>
-                <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
-                  {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
-                </small>
+                {h.currentValue == null ? (
+                  <p className="message error">Valuation unavailable</p>
+                ) : (
+                  <p>{money(h.currentValue)}</p>
+                )}
+                {h.profitLoss == null ? (
+                  <small>Rate unavailable</small>
+                ) : (
+                  <small className={h.profitLoss >= 0 ? 'positive' : 'negative'}>
+                    {h.profitLoss >= 0 ? '+' : ''}{money(h.profitLoss)} P/L
+                  </small>
+                )}
               </article>
             ))
           ) : (
@@ -193,12 +201,16 @@ function TradePanel({ rates, onTradeComplete }) {
   const [submitting, setSubmitting] = useState(false);
 
   const numericalAmount = Number(amount) || 0;
-  const rate = Number(rates.find((r) => r.code === selected)?.rate || 0);
-  const preview = mode === 'buy' ? numericalAmount / rate : numericalAmount * rate;
+  const selectedRate = rates.find((r) => r.code === selected);
+  const rate = selectedRate ? Number(selectedRate.rate) : NaN;
+  const rateAvailable = Number.isFinite(rate) && rate > 0;
+  const preview = rateAvailable
+    ? (mode === 'buy' ? numericalAmount / rate : numericalAmount * rate)
+    : null;
 
   const submitTrade = async (e) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || !rateAvailable) return;
     setMessage('');
     const numericalAmount = Number(amount) || 0;
     if (numericalAmount <= 0) return setMessage('Enter an amount greater than zero.');
@@ -237,13 +249,17 @@ function TradePanel({ rates, onTradeComplete }) {
       </div>
       <label>
         Currency
-        <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-          {rates.map((r) => (
-            <option key={r.code} value={r.code}>
-              {r.code}
-            </option>
-          ))}
-        </select>
+        {rates.length === 0 ? (
+          <p className="message error">Exchange rates unavailable.</p>
+        ) : (
+          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+            {rates.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.code}
+              </option>
+            ))}
+          </select>
+        )}
       </label>
       <label>
         {mode === 'buy' ? 'Amount in INR' : `Amount in ${selected}`}
@@ -255,15 +271,17 @@ function TradePanel({ rates, onTradeComplete }) {
         />
       </label>
       <div className="calculation">
-        {mode === 'buy' ? (
+        {!rateAvailable ? (
+          <p className="message error">Exchange rate unavailable.</p>
+        ) : mode === 'buy' ? (
           <>You receive <strong>{preview.toFixed(2)} {selected}</strong></>
         ) : (
           <>You receive <strong>{money(preview)}</strong></>
         )}
-        <small>Rate: 1 {selected} = {money(rate)}</small>
+        {rateAvailable && <small>Rate: 1 {selected} = {money(rate)}</small>}
       </div>
-      <button type="submit" className="trade-button" disabled={submitting}>
-        {submitting ? 'Processing...' : mode === 'buy' ? `Buy ${selected}` : `Sell ${selected}`}
+      <button type="submit" className="trade-button" disabled={submitting || !rateAvailable}>
+        {!rateAvailable ? 'Rate unavailable' : submitting ? 'Processing...' : mode === 'buy' ? `Buy ${selected}` : `Sell ${selected}`}
       </button>
       {message && <p className={`message ${message.toLowerCase().includes('failed') || message.toLowerCase().includes('insufficient') ? 'error' : ''}`}>{message}</p>}
     </form>

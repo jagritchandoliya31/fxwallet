@@ -4,6 +4,7 @@ import com.fxwallet.dto.BuyRequest;
 import com.fxwallet.dto.SellRequest;
 import com.fxwallet.dto.TransactionResponse;
 import com.fxwallet.entity.*;
+import com.fxwallet.exception.ExchangeRateUnavailableException;
 import com.fxwallet.exception.InsufficientBalanceException;
 import com.fxwallet.exception.InsufficientHoldingsException;
 import com.fxwallet.exception.ResourceNotFoundException;
@@ -46,7 +47,7 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Currency not found: " + request.currencyCode()));
 
         BigDecimal amountInr = BigDecimalUtil.scale(request.amountInr());
-        BigDecimal rate = BigDecimalUtil.scale(rateService.getCurrentRate(currency.getCode()));
+        BigDecimal rate = getValidRate(currency.getCode());
         BigDecimal quantity = amountInr.divide(rate, 6, java.math.RoundingMode.HALF_UP);
 
         Wallet wallet = walletRepository.findByUserId(user.getId())
@@ -95,7 +96,7 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Currency not found: " + request.currencyCode()));
 
         BigDecimal quantity = request.quantity();
-        BigDecimal rate = BigDecimalUtil.scale(rateService.getCurrentRate(currency.getCode()));
+        BigDecimal rate = getValidRate(currency.getCode());
 
         Holding holding = holdingRepository.findByUserIdAndCurrencyCode(user.getId(), currency.getCode())
                 .orElseThrow(() -> new InsufficientHoldingsException("No holdings found for " + currency.getCode()));
@@ -137,6 +138,14 @@ public class TransactionService {
         User user = getCurrentUser();
         return transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), pageable)
                 .map(this::toResponse);
+    }
+
+    private BigDecimal getValidRate(String currencyCode) {
+        BigDecimal rate = rateService.getCurrentRate(currencyCode);
+        if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ExchangeRateUnavailableException("Exchange rate currently unavailable. Please try again.");
+        }
+        return BigDecimalUtil.scale(rate);
     }
 
     private TransactionResponse toResponse(Transaction transaction) {

@@ -42,6 +42,12 @@ public class AlertService {
         alert.setCurrency(currency);
         alert.setTargetRate(request.targetRate());
         alert.setTriggered(false);
+
+        List<RateAlert> existingAlerts = rateAlertRepository.findByUserIdAndCurrencyCode(user.getId(), currency.getCode());
+        if (existingAlerts.stream().anyMatch(existing -> !existing.isTriggered())) {
+            throw new IllegalArgumentException("An active alert already exists for " + currency.getCode());
+        }
+
         rateAlertRepository.save(alert);
         return toResponse(alert);
     }
@@ -78,6 +84,7 @@ public class AlertService {
         for (RateAlert alert : alerts) {
             if (alert.isTriggered()) continue;
             java.math.BigDecimal currentRate = rateService.getCurrentRate(alert.getCurrency().getCode());
+            if (currentRate == null || currentRate.compareTo(java.math.BigDecimal.ZERO) <= 0) continue;
             if (currentRate.compareTo(alert.getTargetRate()) >= 0) {
                 alert.setTriggered(true);
                 rateAlertRepository.save(alert);

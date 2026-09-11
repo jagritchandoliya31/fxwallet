@@ -36,19 +36,25 @@ public class PortfolioService {
                 .map(this::toHoldingResponse)
                 .collect(Collectors.toList());
 
-        BigDecimal totalPortfolioValue = holdingResponses.stream()
+        boolean valuationsAvailable = holdingResponses.stream()
+                .allMatch(h -> h.currentValue() != null);
+        BigDecimal totalPortfolioValue = valuationsAvailable
+                ? holdingResponses.stream()
                 .map(HoldingResponse::currentValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                : null;
         BigDecimal totalInvested = holdingResponses.stream()
                 .map(HoldingResponse::investedAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPl = holdingResponses.stream()
+        BigDecimal totalPl = valuationsAvailable
+                ? holdingResponses.stream()
                 .map(HoldingResponse::profitLoss)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal plPct = totalInvested.compareTo(BigDecimal.ZERO) > 0
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                : null;
+        BigDecimal plPct = valuationsAvailable && totalInvested.compareTo(BigDecimal.ZERO) > 0 && totalPl != null
                 ? totalPl.divide(totalInvested, 4, java.math.RoundingMode.HALF_UP)
                         .multiply(new BigDecimal("100"))
-                : BigDecimal.ZERO;
+                : null;
 
         return new PortfolioResponse(
                 totalPortfolioValue,
@@ -60,10 +66,27 @@ public class PortfolioService {
     }
 
     private HoldingResponse toHoldingResponse(Holding holding) {
-        BigDecimal currentRate = BigDecimalUtil.scale(rateService.getCurrentRate(holding.getCurrency().getCode()));
+        BigDecimal currentRate = rateService.getCurrentRate(holding.getCurrency().getCode());
         BigDecimal quantity = holding.getQuantity();
         BigDecimal avgBuyRate = BigDecimalUtil.scale(holding.getAvgBuyRate());
         BigDecimal investedAmount = BigDecimalUtil.scale(avgBuyRate.multiply(quantity));
+
+        if (currentRate == null || currentRate.compareTo(BigDecimal.ZERO) <= 0) {
+            return new HoldingResponse(
+                    holding.getCurrency().getCode(),
+                    holding.getCurrency().getName(),
+                    holding.getCurrency().getSymbol(),
+                    quantity,
+                    avgBuyRate,
+                    null,
+                    investedAmount,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        currentRate = BigDecimalUtil.scale(currentRate);
         BigDecimal currentValue = BigDecimalUtil.scale(currentRate.multiply(quantity));
         BigDecimal profitLoss = currentValue.subtract(investedAmount);
         BigDecimal plPct = investedAmount.compareTo(BigDecimal.ZERO) > 0

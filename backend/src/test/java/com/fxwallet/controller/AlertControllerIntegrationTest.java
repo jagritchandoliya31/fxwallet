@@ -103,6 +103,24 @@ public class AlertControllerIntegrationTest {
     }
 
     @Test
+    public void createAlert_shouldRejectDuplicateActiveAlert() throws Exception {
+        AlertRequest request = new AlertRequest("USD", new BigDecimal("90"));
+
+        mockMvc.perform(post("/api/alerts")
+                .header("Authorization", authHeader())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/alerts")
+                .header("Authorization", authHeader())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("An active alert already exists for USD"));
+    }
+
+    @Test
     public void getMyAlerts_shouldReturnEmptyListForNewUser() throws Exception {
         mockMvc.perform(get("/api/alerts")
                 .header("Authorization", authHeader()))

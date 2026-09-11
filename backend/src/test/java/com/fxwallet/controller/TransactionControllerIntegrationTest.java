@@ -7,7 +7,6 @@ import com.fxwallet.entity.Currency;
 import com.fxwallet.entity.Holding;
 import com.fxwallet.entity.Transaction;
 import com.fxwallet.entity.User;
-import com.fxwallet.entity.Wallet;
 import com.fxwallet.repository.CurrencyRepository;
 import com.fxwallet.repository.HoldingRepository;
 import com.fxwallet.repository.TransactionRepository;
@@ -171,9 +170,100 @@ public class TransactionControllerIntegrationTest {
     }
 
     @Test
+    public void buy_shouldFailWithUnavailableRate() throws Exception {
+        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(null);
+        String requestBody = "{\"currencyCode\":\"USD\",\"amountInr\":10000}";
+
+        mockMvc.perform(post("/api/transactions/buy")
+                .header("Authorization", authHeader())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.message").value("Exchange rate currently unavailable. Please try again."));
+
+        var holdings = holdingRepository.findByUserId(user.getId());
+        assertEquals(0, holdings.size());
+        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertEquals(0, transactions.getContent().size());
+    }
+
+    @Test
+    public void sell_shouldFailWithUnavailableRate() throws Exception {
+        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(null);
+        holdingRepository.save(new Holding(null, user, usd, new BigDecimal("100"), new BigDecimal("85"), null, null));
+        String requestBody = "{\"currencyCode\":\"USD\",\"quantity\":50}";
+
+        mockMvc.perform(post("/api/transactions/sell")
+                .header("Authorization", authHeader())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.message").value("Exchange rate currently unavailable. Please try again."));
+
+        var holdings = holdingRepository.findByUserId(user.getId());
+        assertEquals(new BigDecimal("100.000000"), holdings.get(0).getQuantity());
+        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertEquals(0, transactions.getContent().size());
+    }
+
+    @Test
     public void getTransactions_shouldReturnUserTransactions() throws Exception {
         mockMvc.perform(get("/api/transactions")
                 .header("Authorization", authHeader()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    public void getTransactions_shouldRejectNegativePage() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("page", "-1"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Page must be greater than or equal to 0"));
+    }
+
+    @Test
+    public void getTransactions_shouldRejectZeroSize() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("size", "0"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Size must be greater than 0"));
+    }
+
+    @Test
+    public void getTransactions_shouldRejectNegativeSize() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("size", "-1"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Size must be greater than 0"));
+    }
+
+    @Test
+    public void getTransactions_shouldRejectInvalidSortField() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("sortBy", "user"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Invalid sort field: user"));
+    }
+
+    @Test
+    public void getTransactions_shouldRejectInvalidDirection() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("direction", "sideways"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Direction must be either ASC or DESC"));
+    }
+
+    @Test
+    public void getTransactions_shouldAcceptValidSortFields() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader())
+                .param("sortBy", "amount")
+                .param("direction", "ASC"))
             .andExpect(status().isOk());
     }
 }

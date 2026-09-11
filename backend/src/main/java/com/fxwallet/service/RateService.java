@@ -46,9 +46,12 @@ public class RateService {
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             HttpEntity<String> entity = new HttpEntity<>(headers);
             ResponseEntity<String> response = restTemplate.exchange(ratesApiUrl, HttpMethod.GET, entity, String.class);
-            JsonNode root = objectMapper.readTree(response.getBody());
+            String body = response.getBody();
+            if (body == null || body.isBlank()) return;
+            JsonNode root = objectMapper.readTree(body);
+            if (root == null) return;
             JsonNode ratesNode = root.get("rates");
-            if (ratesNode == null || ratesNode.isMissingNode()) return;
+            if (ratesNode == null || ratesNode.isMissingNode() || !ratesNode.isObject()) return;
 
             List<Currency> currencies = currencyRepository.findByActiveTrue();
             for (Currency currency : currencies) {
@@ -56,8 +59,10 @@ public class RateService {
                 if (rateNode != null && !rateNode.isMissingNode() && rateNode.isNumber() && !rateNode.isNull()) {
                     BigDecimal rate = BigDecimal.valueOf(rateNode.asDouble())
                             .setScale(6, RoundingMode.HALF_UP);
-                    currentRates.put(currency.getCode(), rate);
-                    persistRate(currency, rate);
+                    if (rate.compareTo(BigDecimal.ZERO) > 0) {
+                        currentRates.put(currency.getCode(), rate);
+                        persistRate(currency, rate);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -76,15 +81,18 @@ public class RateService {
 
     @Transactional(readOnly = true)
     public BigDecimal getCurrentRate(String code) {
-        BigDecimal rate = currentRates.get(code.toUpperCase());
-        if (rate != null) return rate;
-        Currency currency = currencyRepository.findByCode(code.toUpperCase())
+        String normalizedCode = code.toUpperCase();
+        BigDecimal rate = currentRates.get(normalizedCode);
+        if (rate != null && rate.compareTo(BigDecimal.ZERO) > 0) return rate;
+        Currency currency = currencyRepository.findByCode(normalizedCode)
                 .orElseThrow(() -> new com.fxwallet.exception.ResourceNotFoundException("Currency not found: " + code));
-        List<RateHistory> histories = rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc(code.toUpperCase());
+        List<RateHistory> histories = rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc(normalizedCode);
         if (!histories.isEmpty()) {
-            return histories.get(histories.size() - 1).getRate();
+            RateHistory latest = histories.get(histories.size() - 1);
+            return latest.getRate() != null && latest.getRate().compareTo(BigDecimal.ZERO) > 0
+                    ? latest.getRate() : null;
         }
-        return BigDecimal.ZERO;
+        return null;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +101,7 @@ public class RateService {
         List<RateResponse> responses = new ArrayList<>();
         for (Currency currency : currencies) {
             BigDecimal currentRate = getCurrentRate(currency.getCode());
+            if (currentRate == null || currentRate.compareTo(BigDecimal.ZERO) <= 0) continue;
             BigDecimal previousRate = getPreviousRate(currency.getCode());
             String change = calculateChange(currentRate, previousRate);
             responses.add(new RateResponse(
@@ -106,13 +115,12 @@ public class RateService {
         return responses;
     }
 
-    private BigDecimal getPreviousRate(String code) {
-        List<RateHistory> histories = rateHistoryRepository.findByCurrencyCodeAndTimestampBetweenOrderByTimestampAsc(
-                code.toUpperCase(), LocalDateTime.now().minusHours(24), LocalDateTime.now());
-        if (histories.isEmpty()) {
+    BigDecimal getPreviousRate(String code) {
+        List<RateHistory> histories = rateHistoryRepository.findByCurrencyCodeOrderByTimestampDesc(code.toUpperCase());
+        if (histories.size() < 2) {
             return null;
         }
-        return histories.get(0).getRate();
+        return histories.get(1).getRate();
     }
 
     private String calculateChange(BigDecimal current, BigDecimal previous) {

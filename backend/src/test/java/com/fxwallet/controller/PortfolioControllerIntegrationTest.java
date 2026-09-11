@@ -11,12 +11,14 @@ import com.fxwallet.repository.HoldingRepository;
 import com.fxwallet.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.math.BigDecimal;
 
@@ -44,6 +46,9 @@ public class PortfolioControllerIntegrationTest {
 
     @Autowired
     private HoldingRepository holdingRepository;
+
+    @MockBean
+    private com.fxwallet.service.RateService rateService;
 
     private String token;
     private User user;
@@ -105,5 +110,22 @@ public class PortfolioControllerIntegrationTest {
             .andExpect(jsonPath("$.holdings").isArray())
             .andExpect(jsonPath("$.holdings[0].code").value("USD"))
             .andExpect(jsonPath("$.holdings[0].quantity").value(100));
+    }
+
+    @Test
+    public void getPortfolio_shouldMarkValuationUnavailableWhenRateMissing() throws Exception {
+        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(null);
+        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+        holdingRepository.save(new Holding(null, user, usd, new BigDecimal("100"), new BigDecimal("85"), null, null));
+
+        mockMvc.perform(get("/api/portfolio")
+                .header("Authorization", authHeader()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalPortfolioValue").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.totalInvested").value(8500))
+            .andExpect(jsonPath("$.totalProfitLoss").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.holdings[0].quantity").value(100))
+            .andExpect(jsonPath("$.holdings[0].currentValue").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.holdings[0].profitLoss").value(org.hamcrest.Matchers.nullValue()));
     }
 }

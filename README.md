@@ -130,6 +130,10 @@ fxwallet/
 - `POST /api/transactions/buy`
 - `POST /api/transactions/sell`
 - `GET /api/transactions?page=0&size=20&sortBy=timestamp&direction=DESC`
+  - Valid sort fields: `timestamp`, `amount`, `quantity`, `currency`, `type`
+  - Invalid page, size, direction, or sort field values return HTTP 400
+
+BUY and SELL requests are rejected with HTTP 503 when the exchange rate is temporarily unavailable; no wallet, holding, or transaction state is modified in that case.
 
 ### Portfolio
 - `GET /api/portfolio`
@@ -250,6 +254,7 @@ npm run build
    - Authenticates the user from JWT.
    - Validates the currency exists.
    - Fetches the **authoritative** exchange rate from the rate service.
+   - Rejects the request with HTTP 503 if the rate is temporarily unavailable (no state is modified).
    - Calculates `quantity = amountInr / rate`.
    - Checks wallet balance.
    - Debits wallet, updates/creates holding, records transaction.
@@ -267,6 +272,7 @@ All financial calculations are performed server-side using `BigDecimal`.
    - Authenticates the user from JWT.
    - Validates the currency exists.
    - Fetches the current rate.
+   - Rejects the request with HTTP 503 if the rate is temporarily unavailable (no state is modified).
    - Checks holding quantity.
    - Calculates `proceeds = quantity * rate`.
    - Calculates `realizedP/L = proceeds - (avgBuyRate * quantity)`.
