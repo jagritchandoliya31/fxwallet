@@ -8,3 +8,5 @@ backend/target/
 backend/.env
 *.env
 secrets/
+backend/startup.log
+backend/.mvn-dist/

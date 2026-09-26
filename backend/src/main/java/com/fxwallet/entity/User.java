@@ -1,12 +1,12 @@
 package com.fxwallet.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -14,8 +14,14 @@ public class User {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(unique = true, length = 50)
+    private String username;
+
     @Column(nullable = false, unique = true, length = 150)
     private String email;
+
+    @Column(length = 20)
+    private String phoneNo;
 
     @Column(nullable = false)
     private String password;
@@ -23,6 +29,17 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.ROLE_USER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_type", length = 20)
+    private UserType userType = UserType.NORMAL;
+
+@Lob
+@Column(name = "profile_image", columnDefinition = "MEDIUMBLOB")
+private byte[] profileImage;
+
+    @Column(name = "profile_image_type", length = 100)
+    private String profileImageType;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -37,6 +54,10 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
+        if (userType == null) {
+            userType = UserType.NORMAL;
+        }
     }
 
     @PreUpdate
@@ -46,7 +67,16 @@ public class User {
 
     public User() {}
 
-    public User(Long id, String name, String email, String password, Role role, LocalDateTime createdAt, LocalDateTime updatedAt, Wallet wallet) {
+    public User(
+            Long id,
+            String name,
+            String email,
+            String password,
+            Role role,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            Wallet wallet
+    ) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -57,24 +87,117 @@ public class User {
         this.wallet = wallet;
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public Wallet getWallet() { return wallet; }
-    public void setWallet(Wallet wallet) { this.wallet = wallet; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhoneNo() {
+        return phoneNo;
+    }
+
+    public void setPhoneNo(String phoneNo) {
+        this.phoneNo = phoneNo;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public UserType getUserType() {
+        return userType;
+    }
+
+    public void setUserType(UserType userType) {
+        this.userType = userType;
+    }
+
+    public byte[] getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(byte[] profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    public String getProfileImageType() {
+        return profileImageType;
+    }
+
+    public void setProfileImageType(String profileImageType) {
+        this.profileImageType = profileImageType;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Wallet getWallet() {
+        return wallet;
+    }
+
+    public void setWallet(Wallet wallet) {
+        this.wallet = wallet;
+    }
 
     public enum Role {
-        ROLE_USER, ROLE_ADMIN
+        ROLE_USER,
+        ROLE_ADMIN
+    }
+
+    public enum UserType {
+        NORMAL,
+        PREMIUM
     }
 }

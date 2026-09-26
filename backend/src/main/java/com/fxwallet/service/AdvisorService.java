@@ -74,15 +74,73 @@ public class AdvisorService {
     }
 
     private BigDecimal calculateVolatility(List<RateHistory> histories) {
-        if (histories.size() < 2) return BigDecimal.ZERO;
-        BigDecimal avg = calculateAverage(histories);
-        BigDecimal varianceSum = histories.stream()
-                .map(h -> h.getRate().subtract(avg).pow(2))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(histories.size()), 6, RoundingMode.HALF_UP);
-        BigDecimal stdDev = sqrt(variance, 6);
-        return stdDev;
+
+    if (histories.size() < 3) {
+        return BigDecimal.ZERO;
     }
+
+    List<BigDecimal> returns = new java.util.ArrayList<>();
+
+    for (int i = 1; i < histories.size(); i++) {
+
+        BigDecimal previous = histories.get(i - 1).getRate();
+        BigDecimal current = histories.get(i).getRate();
+
+        if (previous == null ||
+            current == null ||
+            previous.compareTo(BigDecimal.ZERO) <= 0 ||
+            current.compareTo(BigDecimal.ZERO) <= 0) {
+            continue;
+        }
+
+        BigDecimal returnValue =
+                current.subtract(previous)
+                        .divide(
+                                previous,
+                                10,
+                                RoundingMode.HALF_UP
+                        )
+                        .multiply(new BigDecimal("100"));
+
+        returns.add(returnValue);
+    }
+
+    if (returns.size() < 2) {
+        return BigDecimal.ZERO;
+    }
+
+    BigDecimal mean =
+            returns.stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(
+                            BigDecimal.valueOf(returns.size()),
+                            10,
+                            RoundingMode.HALF_UP
+                    );
+
+    BigDecimal squaredSum = BigDecimal.ZERO;
+
+    for (BigDecimal value : returns) {
+
+        BigDecimal difference = value.subtract(mean);
+
+        squaredSum = squaredSum.add(
+                difference.multiply(difference)
+        );
+    }
+
+    BigDecimal variance =
+            squaredSum.divide(
+                    BigDecimal.valueOf(returns.size()),
+                    10,
+                    RoundingMode.HALF_UP
+            );
+
+    return sqrt(variance, 6);
+}
+
+
+
 
     private BigDecimal sqrt(BigDecimal value, int scale) {
         if (value.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
@@ -96,24 +154,67 @@ public class AdvisorService {
         return x1;
     }
 
-    private BigDecimal calculateScore(BigDecimal current, BigDecimal avg, BigDecimal change, BigDecimal volatility) {
-        if (avg.equals(BigDecimal.ZERO)) return BigDecimal.ZERO;
-        BigDecimal score = BigDecimal.ZERO;
-        if (change.compareTo(BigDecimal.ZERO) > 0) score = score.add(new BigDecimal("30"));
-        else if (change.compareTo(BigDecimal.ZERO) < 0) score = score.subtract(new BigDecimal("30"));
+    private BigDecimal calculateScore(
+        BigDecimal current,
+        BigDecimal avg,
+        BigDecimal change,
+        BigDecimal volatility) {
 
-        BigDecimal deviation = current.subtract(avg).abs().divide(avg, 4, RoundingMode.HALF_UP);
-        if (deviation.compareTo(new BigDecimal("0.02")) < 0) score = score.add(new BigDecimal("20"));
-        else if (deviation.compareTo(new BigDecimal("0.05")) > 0) score = score.subtract(new BigDecimal("20"));
-
-        if (volatility.compareTo(new BigDecimal("0.005")) < 0) score = score.add(new BigDecimal("25"));
-        else if (volatility.compareTo(new BigDecimal("0.02")) > 0) score = score.subtract(new BigDecimal("25"));
-
-        score = score.add(new BigDecimal("25"));
-        if (score.compareTo(new BigDecimal("100")) > 0) score = new BigDecimal("100");
-        if (score.compareTo(BigDecimal.ZERO) < 0) score = BigDecimal.ZERO;
-        return score;
+    if (avg == null || avg.compareTo(BigDecimal.ZERO) == 0) {
+        return BigDecimal.ZERO;
     }
+
+    BigDecimal score = new BigDecimal("50");
+
+    // 1. Recent market movement
+    if (change.compareTo(new BigDecimal("2")) > 0) {
+        score = score.add(new BigDecimal("15"));
+    } else if (change.compareTo(new BigDecimal("0.5")) > 0) {
+        score = score.add(new BigDecimal("8"));
+    } else if (change.compareTo(new BigDecimal("-2")) < 0) {
+        score = score.subtract(new BigDecimal("15"));
+    } else if (change.compareTo(new BigDecimal("-0.5")) < 0) {
+        score = score.subtract(new BigDecimal("8"));
+    }
+
+    // 2. Current rate vs historical average
+    BigDecimal deviation =
+            current.subtract(avg)
+                    .abs()
+                    .divide(avg, 6, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+
+    if (deviation.compareTo(new BigDecimal("1")) <= 0) {
+        score = score.add(new BigDecimal("15"));
+    } else if (deviation.compareTo(new BigDecimal("3")) <= 0) {
+        score = score.add(new BigDecimal("5"));
+    } else {
+        score = score.subtract(new BigDecimal("5"));
+    }
+
+    // 3. Volatility
+    // Volatility is now expressed as percentage points.
+    if (volatility.compareTo(new BigDecimal("0.5")) <= 0) {
+        score = score.add(new BigDecimal("20"));
+    } else if (volatility.compareTo(new BigDecimal("2")) <= 0) {
+        score = score.add(new BigDecimal("5"));
+    } else {
+        score = score.subtract(new BigDecimal("10"));
+    }
+
+    // Keep score between 0 and 100
+    if (score.compareTo(BigDecimal.ZERO) < 0) {
+        score = BigDecimal.ZERO;
+    }
+
+    if (score.compareTo(new BigDecimal("100")) > 0) {
+        score = new BigDecimal("100");
+    }
+
+    return score.setScale(0, RoundingMode.HALF_UP);
+}
+
+
 
     private String determineTrend(BigDecimal change) {
         if (change.compareTo(new BigDecimal("1")) > 0) return "Strongly Positive";
@@ -131,8 +232,15 @@ public class AdvisorService {
     }
 
     private String determineVolatilityLevel(BigDecimal volatility) {
-        if (volatility.compareTo(new BigDecimal("0.02")) > 0) return "High";
-        if (volatility.compareTo(new BigDecimal("0.005")) > 0) return "Medium";
-        return "Low";
+
+    if (volatility.compareTo(new BigDecimal("2")) > 0) {
+        return "High";
     }
+
+    if (volatility.compareTo(new BigDecimal("0.5")) > 0) {
+        return "Medium";
+    }
+
+    return "Low";
+}
 }

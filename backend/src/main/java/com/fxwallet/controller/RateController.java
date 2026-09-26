@@ -1,5 +1,6 @@
 package com.fxwallet.controller;
 
+import com.fxwallet.dto.RateHistoryResponse;
 import com.fxwallet.dto.RateResponse;
 import com.fxwallet.service.RateService;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/rates")
 public class RateController {
+
     private final RateService rateService;
 
     public RateController(RateService rateService) {
@@ -22,7 +24,20 @@ public class RateController {
     }
 
     @GetMapping("/{code}/history")
-    public ResponseEntity<List<com.fxwallet.entity.RateHistory>> getRateHistory(@PathVariable String code) {
-        return ResponseEntity.ok(rateService.getRateHistory(code));
+    public ResponseEntity<List<RateHistoryResponse>> getRateHistory(
+            @PathVariable String code) {
+
+        List<com.fxwallet.entity.RateHistory> histories =
+                rateService.getRateHistory(code);
+
+        List<RateHistoryResponse> response = histories.stream()
+                .map(h -> new RateHistoryResponse(
+                        h.getId(),
+                        h.getRate(),
+                        h.getTimestamp()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 }
