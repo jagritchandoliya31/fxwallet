@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,15 +32,23 @@ public class AdvisorServiceTest {
 
     @Test
     public void getAdvisor_shouldReturnNeutralResponseWhenHistoryMissing() {
+
         Currency currency = new Currency();
         currency.setCode("USD");
         currency.setName("US Dollar");
-        when(currencyService.getByCode("USD")).thenReturn(currency);
-        when(rateHistoryRepository.findByCurrencyCodeAndTimestampBetweenOrderByTimestampAsc(
-                "USD", org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+
+        when(currencyService.getByCode("USD"))
+                .thenReturn(currency);
+
+        when(rateHistoryRepository
+                .findByCurrencyCodeAndTimestampBetweenOrderByTimestampAsc(
+                        eq("USD"),
+                        any(),
+                        any()))
                 .thenReturn(List.of());
 
-        AdvisorResponse response = advisorService.getAdvisor("USD");
+        AdvisorResponse response =
+                advisorService.getAdvisor("USD");
 
         assertEquals("USD", response.currencyCode());
         assertEquals(BigDecimal.ZERO, response.currentRate());
@@ -52,8 +62,17 @@ public class AdvisorServiceTest {
 
     @Test
     public void getAdvisor_shouldThrowWhenCurrencyNotFound() {
-        when(currencyService.getByCode("XYZ")).thenThrow(new ResourceNotFoundException("Currency not found: XYZ"));
 
-        assertThrows(ResourceNotFoundException.class, () -> advisorService.getAdvisor("XYZ"));
+        when(currencyService.getByCode("XYZ"))
+                .thenThrow(
+                        new ResourceNotFoundException(
+                                "Currency not found: XYZ"
+                        )
+                );
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> advisorService.getAdvisor("XYZ")
+        );
     }
 }

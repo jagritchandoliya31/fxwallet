@@ -3,8 +3,8 @@ package com.fxwallet.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fxwallet.dto.LoginRequest;
 import com.fxwallet.dto.RegisterRequest;
-import com.fxwallet.entity.User;
 import com.fxwallet.repository.HoldingRepository;
+import com.fxwallet.repository.RateAlertRepository;
 import com.fxwallet.repository.TransactionRepository;
 import com.fxwallet.repository.UserRepository;
 import com.fxwallet.repository.WalletRepository;
@@ -43,8 +43,12 @@ public class AuthControllerIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    @Autowired
+    private RateAlertRepository rateAlertRepository;
+
     @BeforeEach
     public void setup() {
+        rateAlertRepository.deleteAll();
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
         walletRepository.deleteAll();
@@ -53,7 +57,8 @@ public class AuthControllerIntegrationTest {
 
     @Test
     public void register_shouldCreateUserAndReturnToken() throws Exception {
-        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
+        RegisterRequest request =
+                new RegisterRequest("John Doe", "john@example.com", "password123");
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -66,8 +71,11 @@ public class AuthControllerIntegrationTest {
 
     @Test
     public void register_shouldRejectDuplicateEmail() throws Exception {
-        RegisterRequest request1 = new RegisterRequest("John Doe", "john@example.com", "password123");
-        RegisterRequest request2 = new RegisterRequest("Jane Doe", "john@example.com", "password456");
+        RegisterRequest request1 =
+                new RegisterRequest("John Doe", "john@example.com", "password123");
+
+        RegisterRequest request2 =
+                new RegisterRequest("Jane Doe", "john@example.com", "password456");
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,13 +91,17 @@ public class AuthControllerIntegrationTest {
 
     @Test
     public void login_shouldReturnTokenForValidCredentials() throws Exception {
-        RegisterRequest registerRequest = new RegisterRequest("John Doe", "john@example.com", "password123");
+        RegisterRequest registerRequest =
+                new RegisterRequest("John Doe", "john@example.com", "password123");
+
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(registerRequest)))
             .andExpect(status().isOk());
 
-        LoginRequest loginRequest = new LoginRequest("john@example.com", "password123");
+        LoginRequest loginRequest =
+                new LoginRequest("john@example.com", "password123");
+
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
@@ -100,7 +112,9 @@ public class AuthControllerIntegrationTest {
 
     @Test
     public void login_shouldRejectInvalidCredentials() throws Exception {
-        LoginRequest loginRequest = new LoginRequest("nonexistent@example.com", "wrongpassword");
+        LoginRequest loginRequest =
+                new LoginRequest("nonexistent@example.com", "wrongpassword");
+
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))

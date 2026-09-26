@@ -16,8 +16,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,107 +39,223 @@ public class RateServiceTest {
 
     @BeforeEach
     public void setup() {
-        ReflectionTestUtils.setField(rateService, "ratesApiUrl", "http://localhost:9999/test-rates");
-        ReflectionTestUtils.setField(rateService, "restTemplate", new RestTemplate());
-        ReflectionTestUtils.setField(rateService, "objectMapper", new ObjectMapper());
+        ReflectionTestUtils.setField(
+                rateService,
+                "ratesApiUrl",
+                "http://localhost:9999/test-rates"
+        );
+
+        ReflectionTestUtils.setField(
+                rateService,
+                "restTemplate",
+                new RestTemplate()
+        );
+
+        ReflectionTestUtils.setField(
+                rateService,
+                "objectMapper",
+                new ObjectMapper()
+        );
     }
 
     @Test
     public void getCurrentRate_shouldReturnCachedRate() {
-        Currency currency = new Currency();
-        currency.setCode("USD");
-        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
 
-        java.util.Map<String, BigDecimal> currentRates =
-                (java.util.Map<String, BigDecimal>) ReflectionTestUtils.getField(rateService, "currentRates");
-        currentRates.put("USD", new BigDecimal("85.500000"));
+        Map<String, BigDecimal> currentRates =
+                (Map<String, BigDecimal>) ReflectionTestUtils.getField(
+                        rateService,
+                        "currentRates"
+                );
 
-        BigDecimal rate = rateService.getCurrentRate("USD");
+        currentRates.put(
+                "USD",
+                new BigDecimal("85.500000")
+        );
 
-        assertEquals(new BigDecimal("85.500000"), rate);
+        BigDecimal rate =
+                rateService.getCurrentRate("USD");
+
+        assertEquals(
+                new BigDecimal("85.500000"),
+                rate
+        );
     }
 
     @Test
     public void getCurrentRate_shouldReturnLatestHistoryWhenCacheEmpty() {
+
         Currency currency = new Currency();
         currency.setCode("USD");
-        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+
+        when(currencyRepository.findByCode("USD"))
+                .thenReturn(Optional.of(currency));
 
         RateHistory oldRate = new RateHistory();
         oldRate.setRate(new BigDecimal("80.000000"));
-        oldRate.setTimestamp(LocalDateTime.now().minusHours(2));
+        oldRate.setTimestamp(
+                LocalDateTime.now().minusHours(2)
+        );
+
         RateHistory latestRate = new RateHistory();
         latestRate.setRate(new BigDecimal("85.000000"));
-        latestRate.setTimestamp(LocalDateTime.now());
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc("USD"))
-                .thenReturn(List.of(oldRate, latestRate));
+        latestRate.setTimestamp(
+                LocalDateTime.now()
+        );
 
-        BigDecimal rate = rateService.getCurrentRate("USD");
+        when(
+                rateHistoryRepository
+                        .findByCurrencyCodeOrderByTimestampAsc("USD")
+        ).thenReturn(
+                List.of(oldRate, latestRate)
+        );
 
-        assertEquals(new BigDecimal("85.000000"), rate);
+        BigDecimal rate =
+                rateService.getCurrentRate("USD");
+
+        assertEquals(
+                new BigDecimal("85.000000"),
+                rate
+        );
     }
 
     @Test
     public void getCurrentRate_shouldReturnNullWhenNoRateExists() {
+
         Currency currency = new Currency();
         currency.setCode("USD");
-        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc("USD")).thenReturn(List.of());
 
-        BigDecimal rate = rateService.getCurrentRate("USD");
+        when(currencyRepository.findByCode("USD"))
+                .thenReturn(Optional.of(currency));
+
+        when(
+                rateHistoryRepository
+                        .findByCurrencyCodeOrderByTimestampAsc("USD")
+        ).thenReturn(List.of());
+
+        BigDecimal rate =
+                rateService.getCurrentRate("USD");
 
         assertNull(rate);
     }
 
     @Test
-    public void getPreviousRate_shouldReturnImmediatelyPreviousRecordedRate() {
-        Currency currency = new Currency();
-        currency.setCode("USD");
-        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+    public void getPreviousRate_shouldReturnRateFromPreviousDay() {
 
-        RateHistory oldest = new RateHistory();
-        oldest.setRate(new BigDecimal("78.000000"));
-        oldest.setTimestamp(LocalDateTime.now().minusHours(4));
-        RateHistory previous = new RateHistory();
-        previous.setRate(new BigDecimal("82.000000"));
-        previous.setTimestamp(LocalDateTime.now().minusHours(2));
-        RateHistory latest = new RateHistory();
-        latest.setRate(new BigDecimal("85.000000"));
-        latest.setTimestamp(LocalDateTime.now());
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampDesc("USD"))
-                .thenReturn(List.of(latest, previous, oldest));
+        RateHistory todayLatest = new RateHistory();
+        todayLatest.setRate(
+                new BigDecimal("85.000000")
+        );
+        todayLatest.setTimestamp(
+                LocalDateTime.now()
+        );
 
-        BigDecimal previousRate = rateService.getPreviousRate("USD");
+        RateHistory yesterdayRate = new RateHistory();
+        yesterdayRate.setRate(
+                new BigDecimal("82.000000")
+        );
+        yesterdayRate.setTimestamp(
+                LocalDateTime.now()
+                        .minusDays(1)
+        );
 
-        assertEquals(new BigDecimal("82.000000"), previousRate);
+        RateHistory olderRate = new RateHistory();
+        olderRate.setRate(
+                new BigDecimal("78.000000")
+        );
+        olderRate.setTimestamp(
+                LocalDateTime.now()
+                        .minusDays(2)
+        );
+
+        when(
+                rateHistoryRepository
+                        .findByCurrencyCodeOrderByTimestampDesc("USD")
+        ).thenReturn(
+                List.of(
+                        todayLatest,
+                        yesterdayRate,
+                        olderRate
+                )
+        );
+
+        BigDecimal previousRate =
+                rateService.getPreviousRate("USD");
+
+        assertEquals(
+                new BigDecimal("82.000000"),
+                previousRate
+        );
+    }
+
+    @Test
+    public void getPreviousRate_shouldReturnNullWhenNoPreviousDayRateExists() {
+
+        RateHistory todayRate = new RateHistory();
+        todayRate.setRate(
+                new BigDecimal("85.000000")
+        );
+        todayRate.setTimestamp(
+                LocalDateTime.now()
+        );
+
+        when(
+                rateHistoryRepository
+                        .findByCurrencyCodeOrderByTimestampDesc("USD")
+        ).thenReturn(
+                List.of(todayRate)
+        );
+
+        BigDecimal previousRate =
+                rateService.getPreviousRate("USD");
+
+        assertNull(previousRate);
     }
 
     @Test
     public void getAllRates_shouldSkipCurrenciesWithUnavailableRates() {
+
         Currency usd = new Currency();
         usd.setCode("USD");
         usd.setName("US Dollar");
         usd.setSymbol("$");
+
         Currency eur = new Currency();
         eur.setCode("EUR");
         eur.setName("Euro");
         eur.setSymbol("€");
-        when(currencyRepository.findByActiveTrue()).thenReturn(List.of(usd, eur));
-        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(usd));
-        when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
 
-        RateHistory usdHistory = new RateHistory();
-        usdHistory.setRate(new BigDecimal("85.000000"));
-        usdHistory.setTimestamp(LocalDateTime.now());
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc("USD")).thenReturn(List.of(usdHistory));
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampDesc("USD")).thenReturn(List.of(usdHistory));
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampAsc("EUR")).thenReturn(List.of());
-        when(rateHistoryRepository.findByCurrencyCodeOrderByTimestampDesc("EUR")).thenReturn(List.of());
+        when(currencyRepository.findByActiveTrue())
+                .thenReturn(List.of(usd, eur));
+        when(currencyRepository.findByCode("EUR"))
+        .thenReturn(Optional.of(eur));
+        when(rateHistoryRepository
+        .findByCurrencyCodeOrderByTimestampAsc("EUR"))
+        .thenReturn(List.of());
 
-        List<RateResponse> responses = rateService.getAllRates();
+        Map<String, BigDecimal> currentRates =
+                (Map<String, BigDecimal>) ReflectionTestUtils.getField(
+                        rateService,
+                        "currentRates"
+                );
+
+        currentRates.put(
+                "USD",
+                new BigDecimal("85.000000")
+        );
+
+        List<RateResponse> responses =
+                rateService.getAllRates();
 
         assertEquals(1, responses.size());
-        assertEquals("USD", responses.get(0).code());
-        assertEquals(new BigDecimal("85.000000"), responses.get(0).rate());
+
+        assertEquals(
+                "USD",
+                responses.get(0).code()
+        );
+
+        assertEquals(
+                new BigDecimal("85.000000"),
+                responses.get(0).rate()
+        );
     }
 }
