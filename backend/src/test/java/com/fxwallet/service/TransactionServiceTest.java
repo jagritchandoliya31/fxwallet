@@ -62,6 +62,66 @@ public class TransactionServiceTest {
     }
 
     @Test
+    public void buy_shouldChargePlatformFeeWithoutChangingHoldingCostBasis() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+
+        Wallet wallet = new Wallet();
+        wallet.setBalance(new BigDecimal("100000.0000"));
+
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(new BigDecimal("85"));
+        when(walletRepository.findByUserId(1L)).thenReturn(Optional.of(wallet));
+        when(holdingRepository.findByUserIdAndCurrencyCode(1L, "USD")).thenReturn(Optional.empty());
+
+        TransactionResponse response = transactionService.buy(new BuyRequest("USD", new BigDecimal("10000")));
+
+        assertEquals(new BigDecimal("10.0000"), response.platformFee());
+        assertEquals(new BigDecimal("89990.0000"), wallet.getBalance());
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getPlatformFee().compareTo(new BigDecimal("10.0000")) == 0
+                        && tx.getInrAmount().compareTo(new BigDecimal("10000.0000")) == 0));
+    }
+
+    @Test
+    public void sell_shouldChargePlatformFeeWithoutChangingRealizedPlDefinition() {
+        Currency currency = new Currency();
+        currency.setId(1L);
+        currency.setCode("USD");
+        currency.setName("US Dollar");
+        currency.setSymbol("$");
+
+        User user = new User();
+        user.setId(1L);
+
+        Wallet wallet = new Wallet();
+        wallet.setBalance(new BigDecimal("100000.0000"));
+
+        Holding holding = new Holding();
+        holding.setUser(user);
+        holding.setCurrency(currency);
+        holding.setQuantity(new BigDecimal("100"));
+        holding.setAvgBuyRate(new BigDecimal("80"));
+
+        when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(currency));
+        when(rateService.getCurrentRate("USD")).thenReturn(new BigDecimal("85"));
+        when(holdingRepository.findByUserIdAndCurrencyCode(1L, "USD")).thenReturn(Optional.of(holding));
+        when(walletRepository.findByUserId(1L)).thenReturn(Optional.of(wallet));
+
+        TransactionResponse response = transactionService.sell(new SellRequest("USD", new BigDecimal("10")));
+
+        assertEquals(new BigDecimal("8.5000"), response.platformFee());
+        assertEquals(new BigDecimal("100841.5000"), wallet.getBalance());
+        assertEquals(new BigDecimal("50.0000"), response.realizedPl());
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getPlatformFee().compareTo(new BigDecimal("8.5000")) == 0
+                        && tx.getRealizedPl().compareTo(new BigDecimal("50.0000")) == 0));
+    }
+
+    @Test
     public void buy_shouldThrowWhenCurrencyNotFound() {
         BuyRequest request = new BuyRequest("XYZ", new BigDecimal("1000"));
         when(currencyRepository.findByCode("XYZ")).thenReturn(Optional.empty());
