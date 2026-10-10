@@ -116,14 +116,20 @@ public class TransactionControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.type").value("BUY"))
             .andExpect(jsonPath("$.currencyCode").value("USD"))
-            .andExpect(jsonPath("$.inrAmount").value(10000));
+            .andExpect(jsonPath("$.inrAmount").value(10000))
+            .andExpect(jsonPath("$.platformFee").value(10.0));
 
         var holdings = holdingRepository.findByUserId(user.getId());
         assertEquals(1, holdings.size());
+        assertEquals(new BigDecimal("117.647059"), holdings.get(0).getQuantity());
+
+        var wallet = walletRepository.findByUserId(user.getId()).orElseThrow();
+        assertEquals(new BigDecimal("89990.0000"), wallet.getBalance());
 
         var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
         assertEquals(1, transactions.getContent().size());
         assertEquals(Transaction.Type.BUY, transactions.getContent().get(0).getType());
+        assertEquals(new BigDecimal("10.0000"), transactions.getContent().get(0).getPlatformFee());
     }
 
     @Test
@@ -150,11 +156,22 @@ public class TransactionControllerIntegrationTest {
                 .content(requestBody))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.type").value("SELL"))
-            .andExpect(jsonPath("$.currencyCode").value("USD"));
+            .andExpect(jsonPath("$.currencyCode").value("USD"))
+            .andExpect(jsonPath("$.inrAmount").value(4250.0))
+            .andExpect(jsonPath("$.platformFee").value(4.25))
+            .andExpect(jsonPath("$.realizedPl").value(0.0));
 
         var holdings = holdingRepository.findByUserId(user.getId());
         assertEquals(1, holdings.size());
         assertEquals(new BigDecimal("50.000000"), holdings.get(0).getQuantity());
+
+        var wallet = walletRepository.findByUserId(user.getId()).orElseThrow();
+        assertEquals(new BigDecimal("104245.7500"), wallet.getBalance());
+
+        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertEquals(1, transactions.getContent().size());
+        assertEquals(new BigDecimal("4.2500"), transactions.getContent().get(0).getPlatformFee());
+        assertEquals(new BigDecimal("0.0000"), transactions.getContent().get(0).getRealizedPl());
     }
 
     @Test
