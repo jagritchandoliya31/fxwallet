@@ -40,6 +40,9 @@ public class Transaction {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal realizedPl = BigDecimal.ZERO;
 
+    @Column(nullable = false, precision = 19, scale = 4)
+    private BigDecimal platformFee = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
@@ -50,7 +53,7 @@ public class Transaction {
 
     public Transaction() {}
 
-    public Transaction(Long id, User user, Currency currency, Type type, BigDecimal inrAmount, BigDecimal quantity, BigDecimal exchangeRate, BigDecimal realizedPl, LocalDateTime timestamp) {
+    public Transaction(Long id, User user, Currency currency, Type type, BigDecimal inrAmount, BigDecimal quantity, BigDecimal exchangeRate, BigDecimal realizedPl, BigDecimal platformFee, LocalDateTime timestamp) {
         this.id = id;
         this.user = user;
         this.currency = currency;
@@ -59,6 +62,7 @@ public class Transaction {
         this.quantity = quantity;
         this.exchangeRate = exchangeRate;
         this.realizedPl = realizedPl;
+        this.platformFee = platformFee;
         this.timestamp = timestamp;
     }
 
@@ -78,6 +82,9 @@ public class Transaction {
     public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
     public BigDecimal getRealizedPl() { return realizedPl; }
     public void setRealizedPl(BigDecimal realizedPl) { this.realizedPl = realizedPl; }
+
+    public BigDecimal getPlatformFee() { return platformFee; }
+    public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 
