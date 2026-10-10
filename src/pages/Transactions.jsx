@@ -314,6 +314,13 @@ export default function Transactions() {
       0
     );
 
+  const pageFees =
+    transactions.reduce(
+      (sum, tx) =>
+        sum + Number(tx.platformFee || 0),
+      0
+    );
+
   if (loading) {
     return (
       <div
@@ -628,7 +635,7 @@ export default function Transactions() {
               'relative',
             display: 'grid',
             gridTemplateColumns:
-              'repeat(3, minmax(0, 1fr))',
+              'repeat(4, minmax(0, 1fr))',
             gap: 10,
             marginTop: 23,
           }}
@@ -690,6 +697,47 @@ export default function Transactions() {
               }}
             >
               {sellCount}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: 13,
+              borderRadius: 13,
+              background:
+                'rgba(255,255,255,0.06)',
+              border:
+                '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                color: '#94a3b8',
+              }}
+            >
+              PLATFORM FEES
+            </div>
+
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 16,
+                fontWeight: 850,
+                color: '#bfdbfe',
+              }}
+            >
+              {money(pageFees)}
+            </div>
+
+            <div
+              style={{
+                marginTop: 2,
+                fontSize: 9,
+                color: '#94a3b8',
+              }}
+            >
+              0.10% per trade
             </div>
           </div>
 
@@ -1241,6 +1289,16 @@ export default function Transactions() {
                           tx.quantity
                         )}{' '}
                         units
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 9,
+                          color: '#64748b',
+                        }}
+                      >
+                        Fee: {money(tx.platformFee)}
                       </div>
                     </div>
 
