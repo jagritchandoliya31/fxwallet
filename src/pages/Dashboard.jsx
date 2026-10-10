@@ -5,6 +5,7 @@ import { portfolioApi } from '../api/portfolioApi';
 import { transactionApi } from '../api/transactionApi';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import FeeTradePanel from '../components/FeeTradePanel';
 
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -1156,7 +1157,7 @@ export default function Dashboard() {
         </section>
 
         {/* TRADE PANEL */}
-        <TradePanel
+        <FeeTradePanel
           rates={rates}
           onTradeComplete={handleTradeComplete}
           walletBalance={wallet?.balance}
