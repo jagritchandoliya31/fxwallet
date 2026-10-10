@@ -12,5 +12,6 @@ public record TransactionResponse(
     BigDecimal quantity,
     BigDecimal exchangeRate,
     BigDecimal realizedPl,
+    BigDecimal platformFee,
     LocalDateTime timestamp
 ) {}
