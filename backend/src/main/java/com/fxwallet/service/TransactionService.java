@@ -10,6 +10,7 @@ import com.fxwallet.exception.InsufficientHoldingsException;
 import com.fxwallet.exception.ResourceNotFoundException;
 import com.fxwallet.repository.*;
 import com.fxwallet.util.BigDecimalUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,11 @@ import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
+    private static final BigDecimal DEFAULT_PLATFORM_FEE_RATE = new BigDecimal("0.0010"); // 0.10%
+
+    @Value("\${app.platform-fee-rate:0.0010}")
+    private BigDecimal platformFeeRate = DEFAULT_PLATFORM_FEE_RATE;
+
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
     private final CurrencyRepository currencyRepository;
@@ -49,14 +55,16 @@ public class TransactionService {
         BigDecimal amountInr = BigDecimalUtil.scale(request.amountInr());
         BigDecimal rate = getValidRate(currency.getCode());
         BigDecimal quantity = amountInr.divide(rate, 6, java.math.RoundingMode.HALF_UP);
+        BigDecimal platformFee = calculatePlatformFee(amountInr);
+        BigDecimal totalDebit = BigDecimalUtil.scale(amountInr.add(platformFee));
 
         Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
-        if (wallet.getBalance().compareTo(amountInr) < 0) {
+        if (wallet.getBalance().compareTo(totalDebit) < 0) {
             throw new InsufficientBalanceException("Insufficient wallet balance");
         }
 
-        wallet.setBalance(wallet.getBalance().subtract(amountInr));
+        wallet.setBalance(wallet.getBalance().subtract(totalDebit));
         walletRepository.save(wallet);
 
         Holding holding = holdingRepository.findByUserIdAndCurrencyCode(user.getId(), currency.getCode())
@@ -84,6 +92,7 @@ public class TransactionService {
         transaction.setQuantity(quantity);
         transaction.setExchangeRate(rate);
         transaction.setRealizedPl(BigDecimal.ZERO);
+        transaction.setPlatformFee(platformFee);
         transactionRepository.save(transaction);
 
         return toResponse(transaction);
@@ -106,12 +115,15 @@ public class TransactionService {
         }
 
         BigDecimal proceeds = BigDecimalUtil.scale(quantity.multiply(rate));
+        BigDecimal platformFee = calculatePlatformFee(proceeds);
+        BigDecimal netProceeds = BigDecimalUtil.scale(proceeds.subtract(platformFee));
         BigDecimal invested = BigDecimalUtil.scale(holding.getAvgBuyRate().multiply(quantity));
+        // Preserve the existing realized P/L definition: gross trade proceeds minus invested cost.
         BigDecimal realizedPl = proceeds.subtract(invested);
 
         Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
-        wallet.setBalance(wallet.getBalance().add(proceeds));
+        wallet.setBalance(wallet.getBalance().add(netProceeds));
         walletRepository.save(wallet);
 
         holding.setQuantity(holding.getQuantity().subtract(quantity));
@@ -128,6 +140,7 @@ public class TransactionService {
         transaction.setQuantity(quantity);
         transaction.setExchangeRate(rate);
         transaction.setRealizedPl(realizedPl);
+        transaction.setPlatformFee(platformFee);
         transactionRepository.save(transaction);
 
         return toResponse(transaction);
@@ -138,6 +151,10 @@ public class TransactionService {
         User user = getCurrentUser();
         return transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), pageable)
                 .map(this::toResponse);
+    }
+
+    private BigDecimal calculatePlatformFee(BigDecimal tradeValue) {
+        return BigDecimalUtil.scale(tradeValue.multiply(platformFeeRate));
     }
 
     private BigDecimal getValidRate(String currencyCode) {
@@ -158,6 +175,7 @@ public class TransactionService {
                 transaction.getQuantity(),
                 transaction.getExchangeRate(),
                 transaction.getRealizedPl(),
+                transaction.getPlatformFee(),
                 transaction.getTimestamp()
         );
     }
