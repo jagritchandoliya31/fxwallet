@@ -29,6 +29,8 @@ app:
     secret: ${JWT_SECRET}
     expiration-ms: 86400000
 
+  platform-fee-rate: 0.0010
+
   external:
     rates-api-url: ${EXCHANGE_RATES_API_URL:https://open.er-api.com/v6/latest/USD}
     api-key: ${EXCHANGE_RATE_API_KEY:}
