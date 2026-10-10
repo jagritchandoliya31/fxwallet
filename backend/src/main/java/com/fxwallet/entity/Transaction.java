@@ -40,7 +40,7 @@ public class Transaction {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal realizedPl = BigDecimal.ZERO;
 
-    @Column(nullable = false, precision = 19, scale = 4)
+    @Column(nullable = false, precision = 19, scale = 4, columnDefinition = "decimal(19,4) default 0")
     private BigDecimal platformFee = BigDecimal.ZERO;
 
     @Column(nullable = false)
