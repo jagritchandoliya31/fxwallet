@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class TransactionService {
     private static final BigDecimal DEFAULT_PLATFORM_FEE_RATE = new BigDecimal("0.0010"); // 0.10%
 
-    @Value("\${app.platform-fee-rate:0.0010}")
+    @Value("${app.platform-fee-rate:0.0010}")
     private BigDecimal platformFeeRate = DEFAULT_PLATFORM_FEE_RATE;
 
     private final WalletRepository walletRepository;
