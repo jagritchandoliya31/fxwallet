@@ -16,5 +16,6 @@
     "react-router-dom": "^7.18.3",
     "recharts": "latest",
     "vite": "latest"
-  }
+  },
+  "packageManager": "pnpm@12.11.2"
 }
