@@ -1,0 +1,188 @@
+import { useState } from "react";
+import { sendChatMessage } from "../api/chatApi";
+
+export default function ChatSupport() {
+    const [messages, setMessages] = useState([
+        {
+            role: "assistant",
+            text: "Hi! I'm the FXWallet Assistant. How can I help you?",
+        },
+    ]);
+
+    const [input, setInput] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSend = async () => {
+        if (!input.trim() || loading) return;
+
+        const userMessage = input.trim();
+
+        setMessages((prev) => [
+            ...prev,
+            { role: "user", text: userMessage },
+        ]);
+
+        setInput("");
+        setLoading(true);
+
+        try {
+            const data = await sendChatMessage(userMessage);
+
+            setMessages((prev) => [
+                ...prev,
+                { role: "assistant", text: data.message },
+            ]);
+        } catch (error) {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    role: "assistant",
+                    text: "Sorry, I couldn't connect to the FXWallet Assistant.",
+                },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === "Enter") {
+            handleSend();
+        }
+    };
+
+    return (
+        <div style={styles.container}>
+            <div style={styles.header}>
+                <div>
+                    <h2 style={styles.title}>FXWallet Assistant</h2>
+                    <p style={styles.subtitle}>Ask me about FXWallet</p>
+                </div>
+            </div>
+
+            <div style={styles.messages}>
+                {messages.map((message, index) => (
+                    <div
+                        key={index}
+                        style={{
+                            ...styles.message,
+                            ...(message.role === "user"
+                                ? styles.userMessage
+                                : styles.assistantMessage),
+                        }}
+                    >
+                        {message.text}
+                    </div>
+                ))}
+
+                {loading && (
+                    <div style={styles.assistantMessage}>
+                        Thinking...
+                    </div>
+                )}
+            </div>
+
+            <div style={styles.inputArea}>
+                <input
+                    type="text"
+                    value={input}
+                    placeholder="Ask something about FXWallet..."
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    style={styles.input}
+                    disabled={loading}
+                />
+
+                <button
+                    onClick={handleSend}
+                    disabled={loading || !input.trim()}
+                    style={styles.button}
+                >
+                    Send
+                </button>
+            </div>
+        </div>
+    );
+}
+
+const styles = {
+    container: {
+        width: "100%",
+        maxWidth: "700px",
+        margin: "0 auto",
+        background: "#ffffff",
+        border: "1px solid #e5e7eb",
+        borderRadius: "16px",
+        overflow: "hidden",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
+    },
+
+    header: {
+        padding: "20px",
+        borderBottom: "1px solid #e5e7eb",
+    },
+
+    title: {
+        margin: 0,
+        fontSize: "20px",
+    },
+
+    subtitle: {
+        margin: "5px 0 0",
+        color: "#6b7280",
+        fontSize: "14px",
+    },
+
+    messages: {
+        minHeight: "400px",
+        maxHeight: "500px",
+        overflowY: "auto",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+    },
+
+    message: {
+        padding: "12px 16px",
+        borderRadius: "12px",
+        maxWidth: "75%",
+        lineHeight: "1.5",
+    },
+
+    userMessage: {
+        alignSelf: "flex-end",
+        background: "#111827",
+        color: "#ffffff",
+    },
+
+    assistantMessage: {
+        alignSelf: "flex-start",
+        background: "#f3f4f6",
+        color: "#111827",
+    },
+
+    inputArea: {
+        display: "flex",
+        gap: "10px",
+        padding: "16px",
+        borderTop: "1px solid #e5e7eb",
+    },
+
+    input: {
+        flex: 1,
+        padding: "12px",
+        border: "1px solid #d1d5db",
+        borderRadius: "10px",
+        outline: "none",
+    },
+
+    button: {
+        padding: "12px 20px",
+        border: "none",
+        borderRadius: "10px",
+        background: "#111827",
+        color: "#ffffff",
+        cursor: "pointer",
+    },
+};

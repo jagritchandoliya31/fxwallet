@@ -18,6 +18,7 @@ import Alerts from './src/pages/Alerts';
 import Advisor from './src/pages/Advisor';
 import PremiumAdvisor from './src/pages/PremiumAdvisor';
 import Premium from './src/pages/Premium';
+import Support from './src/pages/Support';
 
 function RefreshBrand() {
   return (
@@ -1392,6 +1393,14 @@ function AppContent() {
 
           <SectionLabel>Account</SectionLabel>
 
+          
+          <NavItem
+            to="/support"
+            icon="?"
+            label="FXWallet Support"
+          />
+
+          
           <NavItem
             to="/profile"
             icon="◉"
@@ -1519,6 +1528,7 @@ function AppContent() {
             path="/premium"
             element={<Premium />}
           />
+          <Route path="/support" element={<Support />} />
 
           <Route
             path="/profile"
@@ -1539,3 +1549,7 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
+
+
+
