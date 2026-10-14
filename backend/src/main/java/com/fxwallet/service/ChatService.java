@@ -2,6 +2,7 @@ package com.fxwallet.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -16,6 +17,9 @@ public class ChatService {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
+    @Value("${GEMINI_API_KEY}")
+    private String geminiApiKey;
+
     public ChatService(ObjectMapper objectMapper) {
         this.httpClient = HttpClient.newHttpClient();
         this.objectMapper = objectMapper;
@@ -26,7 +30,7 @@ public class ChatService {
         String systemPrompt = """
                 You are the FXWallet Assistant.
 
-                FXWallet is a foreign-exchange wallet application.
+                FXWallet is a foreign-exchange (FX) wallet application.
                 Help users understand:
                 - Currency exchange rates
                 - Portfolio and holdings
@@ -44,50 +48,78 @@ public class ChatService {
 
         try {
             Map<String, Object> requestBody = Map.of(
-                    "model", "qwen3:8b",
-                    "stream", false,
-                    "think", false,
-                    "options", Map.of(
-                            "temperature", 0.3,
-                            "num_predict", 200
+                    "system_instruction", Map.of(
+                            "parts", new Object[]{
+                                    Map.of(
+                                            "text", systemPrompt
+                                    )
+                            }
                     ),
-                    "messages", new Object[]{
+                    "contents", new Object[]{
                             Map.of(
-                                    "role", "system",
-                                    "content", systemPrompt
-                            ),
-                            Map.of(
-                                    "role", "user",
-                                    "content", message
+                                    "parts", new Object[]{
+                                            Map.of(
+                                                    "text", message
+                                            )
+                                    }
                             )
-                    }
+                    },
+                    "generationConfig", Map.of(
+                            "temperature", 0.3,
+                            "maxOutputTokens", 200
+                    )
             );
 
             String json = objectMapper.writeValueAsString(requestBody);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:11434/api/chat"))
+                    .uri(URI.create(
+                            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                    ))
                     .header("Content-Type", "application/json")
+                    .header("x-goog-api-key", geminiApiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(json))
                     .build();
 
             HttpResponse<String> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    httpClient.send(
+                            request,
+                            HttpResponse.BodyHandlers.ofString()
+                    );
 
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            if (response.statusCode() < 200 ||
+                    response.statusCode() >= 300) {
+
+                System.err.println(
+                        "Gemini API error: "
+                                + response.statusCode()
+                                + " "
+                                + response.body()
+                );
+
                 return "The FXWallet AI Assistant is currently unavailable.";
             }
 
             JsonNode root = objectMapper.readTree(response.body());
-            JsonNode content = root.path("message").path("content");
 
-            if (!content.isMissingNode() && !content.isNull()) {
-                return content.asText().trim();
+            JsonNode text = root
+                    .path("candidates")
+                    .path(0)
+                    .path("content")
+                    .path("parts")
+                    .path(0)
+                    .path("text");
+
+            if (!text.isMissingNode() && !text.isNull()) {
+                return text.asText().trim();
             }
 
             return "Sorry, I couldn't generate a response.";
 
         } catch (Exception e) {
+
+            e.printStackTrace();
+
             return "The FXWallet AI Assistant is currently unavailable. Please try again shortly.";
         }
     }
