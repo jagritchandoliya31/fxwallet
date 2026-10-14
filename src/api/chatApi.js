@@ -1,4 +1,4 @@
-const API_URL = `${import.meta.env.VITE_API_URL}/api/v1/chat`;
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/v1/chat`;
 
 export async function sendChatMessage(message) {
     const token = localStorage.getItem("fxwallet_token");
