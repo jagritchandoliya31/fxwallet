@@ -65,7 +65,7 @@ public class ChatService {
                             )
                     },
                     "generationConfig", Map.of(
-                            "temperature", 0.3,
+                            
                             "maxOutputTokens", 200
                     )
             );
@@ -74,7 +74,7 @@ public class ChatService {
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(
-                            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
                     ))
                     .header("Content-Type", "application/json")
                     .header("x-goog-api-key", geminiApiKey)

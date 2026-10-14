@@ -36,3 +36,5 @@ logging:
     com.fxwallet: WARN
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
+
+GEMINI_API_KEY: test-key
