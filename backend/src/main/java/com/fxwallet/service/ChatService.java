@@ -46,22 +46,13 @@ public class ChatService {
                 You are the FXWallet Assistant.
 
                 FXWallet is a foreign-exchange (FX) wallet application.
-                Help users understand:
-                - Currency exchange rates
-                - Portfolio and holdings
-                - BUY and SELL transactions
-                - Profit and loss
-                - Currency alerts
-                - Market and historical rates
-                - FXWallet features
+                Help users understand FXWallet features, rates, holdings, BUY/SELL,
+                profit and loss, alerts, and transactions.
 
-                Give concise, clear and helpful answers.
-                Use plain text only. Do not use Markdown, asterisks, hashtags,
-                or other formatting symbols. Use short paragraphs or simple
-                numbered lines when helpful.
-                Do not invent account-specific information.
-                If a user asks for information that requires their actual
-                account data, tell them to check the relevant FXWallet section.
+                Answer in 2 to 4 short sentences unless the user asks for detail.
+                Use plain text only. Never use Markdown, asterisks, hashtags, bullets,
+                or other formatting symbols. Do not invent account-specific data.
+                For account-specific questions, direct the user to the relevant section.
                 """;
 
         try {
@@ -74,7 +65,7 @@ public class ChatService {
                                     "parts", new Object[]{Map.of("text", message)}
                             )
                     },
-                    "generationConfig", Map.of("maxOutputTokens", 200)
+                    "generationConfig", Map.of("maxOutputTokens", 120)
             );
 
             String json = objectMapper.writeValueAsString(requestBody);
@@ -83,7 +74,7 @@ public class ChatService {
                     .uri(URI.create(
                             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
                     ))
-                    .timeout(Duration.ofSeconds(20))
+                    .timeout(Duration.ofSeconds(12))
                     .header("Content-Type", "application/json")
                     .header("x-goog-api-key", geminiApiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(json))
