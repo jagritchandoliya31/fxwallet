@@ -7,12 +7,16 @@ import com.fxwallet.entity.Currency;
 import com.fxwallet.entity.RateHistory;
 import com.fxwallet.repository.CurrencyRepository;
 import com.fxwallet.repository.RateHistoryRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import java.time.Duration;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RateService {
+    private static final Logger log = LoggerFactory.getLogger(RateService.class);
 
     private final CurrencyRepository currencyRepository;
     private final RateHistoryRepository rateHistoryRepository;
@@ -37,12 +42,16 @@ public class RateService {
 
     public RateService(
             CurrencyRepository currencyRepository,
-            RateHistoryRepository rateHistoryRepository) {
+            RateHistoryRepository rateHistoryRepository,
+            RestTemplateBuilder restTemplateBuilder) {
 
         this.currencyRepository = currencyRepository;
         this.rateHistoryRepository = rateHistoryRepository;
         this.objectMapper = new ObjectMapper();
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     /*
@@ -60,7 +69,7 @@ public class RateService {
 
         try {
 
-            System.out.println(
+            log.info(
                     "=== FXWallet: Fetching exchange rates ==="
             );
 
@@ -94,7 +103,7 @@ public class RateService {
 
             if (body == null || body.isBlank()) {
 
-                System.err.println(
+                log.warn(
                         "Rates API returned an empty response."
                 );
 
@@ -246,7 +255,7 @@ public class RateService {
                     "=== FXWallet: RATE FETCH FAILED ==="
             );
 
-            e.printStackTrace();
+            log.error("Rate fetch failed", e);
         }
     }
 
