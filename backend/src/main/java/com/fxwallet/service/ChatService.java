@@ -32,6 +32,15 @@ public class ChatService {
         this.objectMapper = objectMapper;
     }
 
+    private String cleanResponse(String response) {
+        return response
+                .replace("*", "")
+                .replace("#", "")
+                .replace("__", "")
+                .replaceAll("\\[([^\\]]+)\\]\\([^\\)]+\\)", "$1")
+                .trim();
+    }
+
     public String getResponse(String message) {
         String systemPrompt = """
                 You are the FXWallet Assistant.
@@ -90,16 +99,28 @@ public class ChatService {
                 return "The FXWallet AI Assistant is currently unavailable.";
             }
 
-            JsonNode text = objectMapper.readTree(response.body())
+            JsonNode parts = objectMapper.readTree(response.body())
                     .path("candidates")
                     .path(0)
                     .path("content")
-                    .path("parts")
-                    .path(0)
-                    .path("text");
+                    .path("parts");
 
-            if (!text.isMissingNode() && !text.isNull()) {
-                return text.asText().trim();
+            if (parts.isArray()) {
+                StringBuilder answer = new StringBuilder();
+
+                for (JsonNode part : parts) {
+                    JsonNode text = part.path("text");
+                    if (!text.isMissingNode() && !text.isNull() && !text.asText().isBlank()) {
+                        if (answer.length() > 0) {
+                            answer.append("\n");
+                        }
+                        answer.append(text.asText());
+                    }
+                }
+
+                if (answer.length() > 0) {
+                    return cleanResponse(answer.toString());
+                }
             }
 
             log.warn("Gemini API returned no response text");
