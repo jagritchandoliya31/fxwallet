@@ -18,12 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.math.RoundingMode;
 
 @Service
 public class TransactionService {
-    private static final BigDecimal DEFAULT_PLATFORM_FEE_RATE = new BigDecimal("0.0010"); // 0.10%
+    private static final BigDecimal DEFAULT_PLATFORM_FEE_RATE = new BigDecimal("0.0010");
 
     @Value("${app.platform-fee-rate:0.0010}")
     private BigDecimal platformFeeRate = DEFAULT_PLATFORM_FEE_RATE;
@@ -54,7 +53,7 @@ public class TransactionService {
 
         BigDecimal amountInr = BigDecimalUtil.scale(request.amountInr());
         BigDecimal rate = getValidRate(currency.getCode());
-        BigDecimal quantity = amountInr.divide(rate, 6, java.math.RoundingMode.HALF_UP);
+        BigDecimal quantity = amountInr.divide(rate, 6, RoundingMode.HALF_UP);
         BigDecimal platformFee = calculatePlatformFee(amountInr);
         BigDecimal totalDebit = BigDecimalUtil.scale(amountInr.add(platformFee));
 
@@ -80,7 +79,7 @@ public class TransactionService {
             BigDecimal newTotalInvested = totalInvested.add(amountInr);
             BigDecimal newQuantity = holding.getQuantity().add(quantity);
             holding.setQuantity(newQuantity);
-            holding.setAvgBuyRate(newTotalInvested.divide(newQuantity, 6, java.math.RoundingMode.HALF_UP));
+            holding.setAvgBuyRate(newTotalInvested.divide(newQuantity, 6, RoundingMode.HALF_UP));
         }
         holdingRepository.save(holding);
 
@@ -118,8 +117,9 @@ public class TransactionService {
         BigDecimal platformFee = calculatePlatformFee(proceeds);
         BigDecimal netProceeds = BigDecimalUtil.scale(proceeds.subtract(platformFee));
         BigDecimal invested = BigDecimalUtil.scale(holding.getAvgBuyRate().multiply(quantity));
-        // Preserve the existing realized P/L definition: gross trade proceeds minus invested cost.
-        BigDecimal realizedPl = proceeds.subtract(invested);
+
+        // Realized P/L is the economic result after transaction costs.
+        BigDecimal realizedPl = BigDecimalUtil.scale(netProceeds.subtract(invested));
 
         Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
@@ -183,6 +183,6 @@ public class TransactionService {
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new com.fxwallet.exception.ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }
