@@ -41,6 +41,91 @@ public class ChatService {
                 .trim();
     }
 
+    public void streamResponse(String message, java.io.OutputStream outputStream) throws Exception {
+        String systemPrompt = """
+                You are the FXWallet Assistant.
+                Help users understand FXWallet features, rates, holdings, BUY/SELL,
+                profit and loss, alerts, and transactions.
+                Answer in 2 to 4 short sentences unless the user asks for detail.
+                Use plain text only. Never use Markdown, asterisks, hashtags, bullets,
+                or other formatting symbols. Do not invent account-specific data.
+                For account-specific questions, direct the user to the relevant section.
+                """;
+
+        Map<String, Object> requestBody = Map.of(
+                "system_instruction", Map.of(
+                        "parts", new Object[]{Map.of("text", systemPrompt)}
+                ),
+                "contents", new Object[]{
+                        Map.of(
+                                "parts", new Object[]{Map.of("text", message)}
+                        )
+                },
+                "generationConfig", Map.of("maxOutputTokens", 120)
+        );
+
+        String json = objectMapper.writeValueAsString(requestBody);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse"
+                ))
+                .timeout(Duration.ofSeconds(12))
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", geminiApiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpResponse<java.util.stream.Stream<String>> response = httpClient.send(
+                request,
+                HttpResponse.BodyHandlers.ofLines()
+        );
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Gemini streaming API returned status {}", response.statusCode());
+            writeStreamEvent(outputStream, "The FXWallet AI Assistant is currently unavailable.");
+            return;
+        }
+
+        try (java.util.stream.Stream<String> lines = response.body()) {
+            lines.filter(line -> line.startsWith("data:"))
+                    .map(line -> line.substring(5).trim())
+                    .filter(data -> !data.isEmpty())
+                    .forEach(data -> {
+                        try {
+                            JsonNode parts = objectMapper.readTree(data)
+                                    .path("candidates")
+                                    .path(0)
+                                    .path("content")
+                                    .path("parts");
+
+                            if (parts.isArray()) {
+                                for (JsonNode part : parts) {
+                                    JsonNode text = part.path("text");
+                                    if (!text.isMissingNode() && !text.isNull() && !text.asText().isBlank()) {
+                                        writeStreamEvent(outputStream, cleanResponse(text.asText()));
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to parse Gemini streaming chunk");
+                        }
+                    });
+        }
+
+        outputStream.flush();
+    }
+
+    private void writeStreamEvent(java.io.OutputStream outputStream, String text) {
+        try {
+            String event = objectMapper.writeValueAsString(Map.of("text", text));
+            outputStream.write(("data: " + event + "\n\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            outputStream.flush();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public String getResponse(String message) {
         String systemPrompt = """
                 You are the FXWallet Assistant.

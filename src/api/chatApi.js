@@ -28,3 +28,52 @@ export async function sendChatMessage(message) {
 
     return response.json();
 }
+
+
+export async function streamChatMessage(message, onChunk) {
+    const token = localStorage.getItem("fxwallet_token");
+
+    const response = await fetch(`${API_BASE}/v1/chat/stream`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message }),
+    });
+
+    if (!response.ok || !response.body) {
+        throw new Error(`Chat stream failed: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+
+        for (const event of events) {
+            const line = event
+                .split("\n")
+                .find((entry) => entry.startsWith("data:"));
+
+            if (!line) continue;
+
+            try {
+                const payload = JSON.parse(line.slice(5).trim());
+                if (payload.text) {
+                    onChunk(payload.text);
+                }
+            } catch {
+                // Ignore incomplete SSE frames.
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sendChatMessage } from "../api/chatApi";
+import { streamChatMessage } from "../api/chatApi";
 
 function cleanAssistantText(text) {
     if (!text) return "";
@@ -35,29 +35,36 @@ export default function ChatSupport() {
         setMessages((prev) => [
             ...prev,
             { role: "user", text: userMessage },
+            { role: "assistant", text: "" },
         ]);
 
         setInput("");
         setLoading(true);
 
         try {
-            const data = await sendChatMessage(userMessage);
-
-            setMessages((prev) => [
-                ...prev,
-                {
-                    role: "assistant",
-                    text: cleanAssistantText(data.message),
-                },
-            ]);
+            await streamChatMessage(userMessage, (chunk) => {
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIndex = updated.length - 1;
+                    updated[lastIndex] = {
+                        ...updated[lastIndex],
+                        text: cleanAssistantText(
+                            updated[lastIndex].text + chunk
+                        ),
+                    };
+                    return updated;
+                });
+            });
         } catch (error) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    role: "assistant",
+            setMessages((prev) => {
+                const updated = [...prev];
+                const lastIndex = updated.length - 1;
+                updated[lastIndex] = {
+                    ...updated[lastIndex],
                     text: "Sorry, I couldn't connect to the FXWallet Assistant.",
-                },
-            ]);
+                };
+                return updated;
+            });
         } finally {
             setLoading(false);
         }
