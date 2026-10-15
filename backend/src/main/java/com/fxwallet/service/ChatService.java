@@ -47,6 +47,9 @@ public class ChatService {
                 - FXWallet features
 
                 Give concise, clear and helpful answers.
+                Use plain text only. Do not use Markdown, asterisks, hashtags,
+                or other formatting symbols. Use short paragraphs or simple
+                numbered lines when helpful.
                 Do not invent account-specific information.
                 If a user asks for information that requires their actual
                 account data, tell them to check the relevant FXWallet section.
