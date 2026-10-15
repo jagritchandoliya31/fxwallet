@@ -1,45 +1,36 @@
 spring:
   application:
     name: fxwallet
-
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/fxwallet?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:fxwallet_app}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
-
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
   sql:
     init:
-      mode: always
-
+      mode: ${SQL_INIT_MODE:always}
 server:
   port: 8080
-
 app:
   jwt:
     secret: ${JWT_SECRET}
-    expiration-ms: 86400000
-
-  platform-fee-rate: 0.0010
-
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  platform-fee-rate: ${PLATFORM_FEE_RATE:0.0010}
   external:
     rates-api-url: ${EXCHANGE_RATES_API_URL:https://open.er-api.com/v6/latest/USD}
     api-key: ${EXCHANGE_RATE_API_KEY:}
-
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
-
 logging:
   level:
-    com.fxwallet: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.fxwallet: ${FXWALLET_LOG_LEVEL:INFO}
+    org.springframework.security: ${SPRING_SECURITY_LOG_LEVEL:WARN}
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG_LEVEL:WARN}
