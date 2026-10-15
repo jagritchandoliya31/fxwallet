@@ -1,6 +1,21 @@
 import { useState } from "react";
 import { sendChatMessage } from "../api/chatApi";
 
+function cleanAssistantText(text) {
+    if (!text) return "";
+
+    return text
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/__(.*?)__/g, "$1")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/\*\s+/g, "• ")
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+        .replace(/```[\s\S]*?```/g, (block) =>
+            block.replace(/```[\w-]*\n?/g, "").replace(/```/g, "")
+        )
+        .trim();
+}
+
 export default function ChatSupport() {
     const [messages, setMessages] = useState([
         {
@@ -30,7 +45,10 @@ export default function ChatSupport() {
 
             setMessages((prev) => [
                 ...prev,
-                { role: "assistant", text: data.message },
+                {
+                    role: "assistant",
+                    text: cleanAssistantText(data.message),
+                },
             ]);
         } catch (error) {
             setMessages((prev) => [
@@ -60,7 +78,7 @@ export default function ChatSupport() {
                 </div>
             </div>
 
-            <div style={styles.messages}>
+            <div style={styles.messages} aria-live="polite">
                 {messages.map((message, index) => (
                     <div
                         key={index}
@@ -77,7 +95,7 @@ export default function ChatSupport() {
 
                 {loading && (
                     <div style={styles.assistantMessage}>
-                        Thinking...
+                        <span style={styles.thinkingLabel}>Thinking<span style={styles.dots}>...</span></span>
                     </div>
                 )}
             </div>
@@ -148,6 +166,8 @@ const styles = {
         borderRadius: "12px",
         maxWidth: "75%",
         lineHeight: "1.5",
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
     },
 
     userMessage: {
@@ -160,6 +180,18 @@ const styles = {
         alignSelf: "flex-start",
         background: "#f3f4f6",
         color: "#111827",
+    },
+
+    thinkingLabel: {
+        display: "inline-block",
+    },
+
+    dots: {
+        display: "inline-block",
+        width: "18px",
+        overflow: "hidden",
+        verticalAlign: "bottom",
+        animation: "fxwalletChatDots 1.2s steps(4, end) infinite",
     },
 
     inputArea: {
@@ -186,3 +218,17 @@ const styles = {
         cursor: "pointer",
     },
 };
+
+const style = document.createElement("style");
+style.textContent = `
+@keyframes fxwalletChatDots {
+    0%, 20% { width: 0; }
+    40% { width: 6px; }
+    60% { width: 12px; }
+    80%, 100% { width: 18px; }
+}
+`;
+if (!document.head.querySelector("#fxwallet-chat-support-styles")) {
+    style.id = "fxwallet-chat-support-styles";
+    document.head.appendChild(style);
+}
