@@ -5,9 +5,11 @@ const configuredApiUrl =
   import.meta.env.VITE_API_BASE_URL ||
   'http://localhost:8080';
 
-const API_BASE = configuredApiUrl.replace(/\\/$/, '').endsWith('/api')
-  ? configuredApiUrl.replace(/\\/$/, '')
-  : `${configuredApiUrl.replace(/\\/$/, '')}/api`;
+const normalizedApiUrl = configuredApiUrl.replace(/\/$/, '');
+
+const API_BASE = normalizedApiUrl.endsWith('/api')
+  ? normalizedApiUrl
+  : `${normalizedApiUrl}/api`;
 
 const api = axios.create({ baseURL: API_BASE });
 
