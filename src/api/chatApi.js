@@ -1,4 +1,15 @@
-const API_URL = `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL}/api/v1/chat`;
+const configuredApiUrl =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    "http://localhost:8080";
+
+const normalizedApiUrl = configuredApiUrl.replace(/\/$/, "");
+const API_BASE = normalizedApiUrl.endsWith("/api")
+    ? normalizedApiUrl
+    : `${normalizedApiUrl}/api`;
+
+const API_URL = `${API_BASE}/v1/chat`;
+
 export async function sendChatMessage(message) {
     const token = localStorage.getItem("fxwallet_token");
 
@@ -6,7 +17,7 @@ export async function sendChatMessage(message) {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ message }),
     });
