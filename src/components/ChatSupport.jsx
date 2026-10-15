@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { streamChatMessage } from "../api/chatApi";
+import { sendChatMessageWithStreamingFallback } from "../api/chatApi";
 
 function cleanAssistantText(text) {
     if (!text) return "";
@@ -42,7 +42,7 @@ export default function ChatSupport() {
         setLoading(true);
 
         try {
-            await streamChatMessage(userMessage, (chunk) => {
+            await sendChatMessageWithStreamingFallback(userMessage, (chunk) => {
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIndex = updated.length - 1;
