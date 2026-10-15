@@ -61,14 +61,14 @@ public class ChatService {
                                 "parts", new Object[]{Map.of("text", message)}
                         )
                 },
-                "generationConfig", Map.of("maxOutputTokens", 256, "thinkingConfig", Map.of("thinkingLevel", "low"))
+                "generationConfig", Map.of("maxOutputTokens", 256)
         );
 
         String json = objectMapper.writeValueAsString(requestBody);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(
-                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse"
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse"
                 ))
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
@@ -150,14 +150,14 @@ public class ChatService {
                                     "parts", new Object[]{Map.of("text", message)}
                             )
                     },
-                    "generationConfig", Map.of("maxOutputTokens", 256, "thinkingConfig", Map.of("thinkingLevel", "low"))
+                    "generationConfig", Map.of("maxOutputTokens", 256)
             );
 
             String json = objectMapper.writeValueAsString(requestBody);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(
-                            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+                            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
                     ))
                     .timeout(Duration.ofSeconds(15))
                     .header("Content-Type", "application/json")
