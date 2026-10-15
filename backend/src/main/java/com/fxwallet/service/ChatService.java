@@ -150,7 +150,7 @@ public class ChatService {
                                     "parts", new Object[]{Map.of("text", message)}
                             )
                     },
-                    "generationConfig", Map.of("maxOutputTokens", 120)
+                    "generationConfig", Map.of("maxOutputTokens", 256, "thinkingConfig", Map.of("thinkingLevel", "low"))
             );
 
             String json = objectMapper.writeValueAsString(requestBody);
@@ -159,7 +159,7 @@ public class ChatService {
                     .uri(URI.create(
                             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
                     ))
-                    .timeout(Duration.ofSeconds(12))
+                    .timeout(Duration.ofSeconds(15))
                     .header("Content-Type", "application/json")
                     .header("x-goog-api-key", geminiApiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(json))
