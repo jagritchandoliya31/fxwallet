@@ -77,3 +77,20 @@ export async function streamChatMessage(message, onChunk) {
         }
     }
 }
+
+
+export async function sendChatMessageWithStreamingFallback(message, onChunk) {
+    try {
+        await streamChatMessage(message, onChunk);
+        return;
+    } catch (streamError) {
+        // Fall back to the standard endpoint so Chat Support still works
+        // if the streaming endpoint is unavailable during deployment.
+        const data = await sendChatMessage(message);
+        if (data?.message) {
+            onChunk(data.message);
+            return;
+        }
+        throw streamError;
+    }
+}
