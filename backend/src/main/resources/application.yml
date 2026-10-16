@@ -12,13 +12,12 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: ${HIBERNATE_FORMAT_SQL:false}
   sql:
     init:
       mode: ${SQL_INIT_MODE:always}
 server:
-  port: 8080
+  port: ${PORT:8080}
 app:
   jwt:
     secret: ${JWT_SECRET}

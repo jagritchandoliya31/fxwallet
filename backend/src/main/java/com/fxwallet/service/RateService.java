@@ -302,28 +302,14 @@ public class RateService {
                                         )
                         );
 
-        List<RateHistory> histories =
-                rateHistoryRepository
-                        .findByCurrencyCodeOrderByTimestampAsc(
-                                normalizedCode
-                        );
-
-        if (!histories.isEmpty()) {
-
-            RateHistory latest =
-                    histories.get(
-                            histories.size() - 1
-                    );
-
-            return latest.getRate() != null
-                    && latest.getRate().compareTo(
-                            BigDecimal.ZERO
-                    ) > 0
-                    ? latest.getRate()
-                    : null;
-        }
-
-        return null;
+        return rateHistoryRepository
+                .findFirstByCurrencyCodeOrderByTimestampDesc(
+                        normalizedCode
+                )
+                .map(RateHistory::getRate)
+                .filter(value -> value != null
+                        && value.compareTo(BigDecimal.ZERO) > 0)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
