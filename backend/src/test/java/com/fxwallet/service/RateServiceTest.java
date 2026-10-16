@@ -90,12 +90,6 @@ public class RateServiceTest {
         when(currencyRepository.findByCode("USD"))
                 .thenReturn(Optional.of(currency));
 
-        RateHistory oldRate = new RateHistory();
-        oldRate.setRate(new BigDecimal("80.000000"));
-        oldRate.setTimestamp(
-                LocalDateTime.now().minusHours(2)
-        );
-
         RateHistory latestRate = new RateHistory();
         latestRate.setRate(new BigDecimal("85.000000"));
         latestRate.setTimestamp(
@@ -104,10 +98,8 @@ public class RateServiceTest {
 
         when(
                 rateHistoryRepository
-                        .findByCurrencyCodeOrderByTimestampAsc("USD")
-        ).thenReturn(
-                List.of(oldRate, latestRate)
-        );
+                        .findFirstByCurrencyCodeOrderByTimestampDesc("USD")
+        ).thenReturn(Optional.of(latestRate));
 
         BigDecimal rate =
                 rateService.getCurrentRate("USD");
@@ -129,8 +121,8 @@ public class RateServiceTest {
 
         when(
                 rateHistoryRepository
-                        .findByCurrencyCodeOrderByTimestampAsc("USD")
-        ).thenReturn(List.of());
+                        .findFirstByCurrencyCodeOrderByTimestampDesc("USD")
+        ).thenReturn(Optional.empty());
 
         BigDecimal rate =
                 rateService.getCurrentRate("USD");
@@ -229,8 +221,8 @@ public class RateServiceTest {
         when(currencyRepository.findByCode("EUR"))
         .thenReturn(Optional.of(eur));
         when(rateHistoryRepository
-        .findByCurrencyCodeOrderByTimestampAsc("EUR"))
-        .thenReturn(List.of());
+        .findFirstByCurrencyCodeOrderByTimestampDesc("EUR"))
+        .thenReturn(Optional.empty());
 
         Map<String, BigDecimal> currentRates =
                 (Map<String, BigDecimal>) ReflectionTestUtils.getField(
