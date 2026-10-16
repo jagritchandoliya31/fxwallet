@@ -17,7 +17,7 @@ spring:
     init:
       mode: ${SQL_INIT_MODE:always}
 server:
-  port: 8080
+  port: ${PORT:8080}
 app:
   jwt:
     secret: ${JWT_SECRET}
