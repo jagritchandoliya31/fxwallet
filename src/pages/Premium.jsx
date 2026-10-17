@@ -6,6 +6,8 @@ export default function Premium() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [purchased, setPurchased] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [otp, setOtp] = useState('');
 
   const handlePurchase = async () => {
     try {
@@ -13,20 +15,32 @@ export default function Premium() {
       setMessage('');
       setError('');
 
-      const response = await premiumApi.purchasePremium();
+      const response = await premiumApi.requestPurchaseVerification();
+      setMessage(response || 'A 4-digit verification code was sent to your email.');
+      setVerificationStep(true);
+    } catch (err) {
+      setError(err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response.data : 'Unable to send verification code.'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const confirmPurchase = async (e) => {
+    e.preventDefault();
+    if (otp.length !== 4) return;
+
+    try {
+      setLoading(true);
+      setMessage('');
+      setError('');
+
+      const response = await premiumApi.confirmPremiumPurchase(otp);
       setMessage(response || 'Premium activated successfully.');
       setPurchased(true);
+      setVerificationStep(false);
+      setOtp('');
     } catch (err) {
-      console.error(err);
-
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (typeof err.response?.data === 'string') {
-        setError(err.response.data);
-      } else {
-        setError('Unable to activate Premium. Please try again.');
-      }
+      setError(err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response.data : 'Invalid verification code.'));
     } finally {
       setLoading(false);
     }
@@ -128,6 +142,33 @@ export default function Premium() {
         </div>
 
         {!purchased ? (
+          verificationStep ? (
+            <div style={{ marginTop: '35px', maxWidth: '380px', marginLeft: 'auto', marginRight: 'auto' }}>
+              <div style={{ padding: '18px', borderRadius: '14px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', fontSize: '13px', lineHeight: 1.5 }}>
+                🔐 <strong>2-step verification</strong><br />
+                Enter the 4-digit code sent to your registered email before completing the ₹999 Premium purchase.
+              </div>
+              <form onSubmit={confirmPurchase}>
+                <input
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={4}
+                  placeholder="••••"
+                  autoFocus
+                  required
+                  style={{ width: '100%', boxSizing: 'border-box', height: '58px', marginTop: '14px', textAlign: 'center', letterSpacing: '0.65em', fontSize: '26px', fontWeight: 800, border: '1px solid #dbe3ee', borderRadius: '13px', background: '#f8fafc' }}
+                />
+                <button type="submit" disabled={loading || otp.length !== 4} style={{ width: '100%', height: '50px', marginTop: '12px', border: 'none', borderRadius: '12px', background: '#111', color: '#fff', fontWeight: 700, opacity: loading || otp.length !== 4 ? 0.6 : 1 }}>
+                  {loading ? 'Verifying...' : 'Verify & Buy Premium'}
+                </button>
+              </form>
+              <button type="button" onClick={() => { setVerificationStep(false); setOtp(''); setError(''); }} style={{ marginTop: '10px', border: 'none', background: 'transparent', color: '#2563eb', fontWeight: 700 }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
           <button
             onClick={handlePurchase}
             disabled={loading}
@@ -148,6 +189,7 @@ export default function Premium() {
               ? 'Activating Premium...'
               : 'Buy Premium ₹999'}
           </button>
+          )
         ) : (
           <div
             style={{
