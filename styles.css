@@ -373,3 +373,32 @@ body { overflow-x: hidden; }
     padding: 11px 12px !important;
   }
 }
+
+
+/* Mobile hero layout hardening */
+@media (max-width: 850px) {
+  .dashboard-hero,
+  .portfolio-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .dashboard-hero > *,
+  .portfolio-hero > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .dashboard-hero > * + *,
+  .portfolio-hero > * + * {
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-hero,
+  .portfolio-hero {
+    gap: 10px !important;
+  }
+}
