@@ -59,11 +59,13 @@ function RefreshBrand() {
 }
 
 function LoginForm({ mode }) {
-  const { login, register, error, setError, loading } = useAuth();
+  const { login, verifyOtp, resendOtp, register, error, setError, loading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [mfaEmail, setMfaEmail] = useState('');
+  const [otp, setOtp] = useState('');
 
   const isRegister = mode === 'register';
 
@@ -75,12 +77,58 @@ function LoginForm({ mode }) {
       if (isRegister) {
         await register(name, email, password);
       } else {
-        await login(email, password);
+        const data = await login(email, password);
+        if (data?.mfaRequired) {
+          setMfaEmail(data.email);
+        }
       }
     } catch {
       // Error handled in AuthContext
     }
   };
+
+  if (!isRegister && mfaEmail) {
+    return (
+      <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', maxWidth: 420, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 22, padding: 28, boxShadow: '0 20px 50px rgba(15,23,42,0.10)' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 34, marginBottom: 10 }}>🔐</div>
+            <h2 style={{ margin: 0, color: '#0f172a' }}>Verify your login</h2>
+            <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+              We sent a <strong>4-digit OTP</strong> to {mfaEmail}. It expires in 5 minutes.
+            </p>
+          </div>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setError('');
+            try { await verifyOtp(mfaEmail, otp); } catch {}
+          }}>
+            <input
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              placeholder="••••"
+              autoFocus
+              required
+              style={{ width: '100%', boxSizing: 'border-box', height: 58, textAlign: 'center', letterSpacing: '0.65em', fontSize: 26, fontWeight: 800, border: '1px solid #dbe3ee', borderRadius: 13, background: '#f8fafc', outline: 'none' }}
+            />
+            {error && <div style={{ marginTop: 14, padding: 11, borderRadius: 10, background: '#fff1f2', color: '#be123c', fontSize: 12 }}>{error}</div>}
+            <button type="submit" disabled={loading || otp.length !== 4} style={{ width: '100%', height: 50, marginTop: 16, border: 'none', borderRadius: 13, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', fontWeight: 800, opacity: loading || otp.length !== 4 ? .65 : 1 }}>
+              {loading ? 'Verifying...' : 'Verify & Continue'}
+            </button>
+          </form>
+          <button type="button" disabled={loading} onClick={async () => { try { await resendOtp(mfaEmail); } catch {} }} style={{ width: '100%', marginTop: 12, height: 44, border: '1px solid #dbe3ee', borderRadius: 12, background: '#fff', color: '#334155', fontWeight: 700 }}>
+            Resend OTP
+          </button>
+          <button type="button" onClick={() => { setMfaEmail(''); setOtp(''); setError(''); }} style={{ width: '100%', marginTop: 8, border: 'none', background: 'transparent', color: '#2563eb', fontWeight: 700 }}>
+            ← Back to login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
