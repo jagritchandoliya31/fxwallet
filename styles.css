@@ -402,3 +402,115 @@ body { overflow-x: hidden; }
     gap: 10px !important;
   }
 }
+
+
+/* Mobile layout hardening v2 */
+@media (max-width: 850px) {
+  /* Portfolio hero: force each hero card onto its own row */
+  .portfolio-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-flow: row !important;
+    gap: 12px !important;
+  }
+
+  .portfolio-hero > .portfolio-value-card,
+  .portfolio-hero > .portfolio-performance-card {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Market rate summary: stack Current / Change / Low / High */
+  .market-rate-summary {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .market-rate-summary > * {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Advisor insight row: stack Historical Snapshot + Momentum */
+  .advisor-insight-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .advisor-insight-row > * {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Dashboard recent transactions: readable two-row mobile card */
+  .dashboard-transaction-row {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+    padding: 12px !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right !important;
+    min-width: 0 !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right !important;
+    min-width: 0 !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .dashboard-transaction-row > div:nth-child(2) {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0 !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(3),
+  .dashboard-transaction-row > div:nth-child(4) {
+    align-self: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .portfolio-hero {
+    gap: 10px !important;
+  }
+
+  .market-rate-summary,
+  .advisor-insight-row {
+    gap: 10px !important;
+  }
+
+  .dashboard-transaction-row {
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .dashboard-transaction-row > div:nth-child(3) {
+    grid-column: 2;
+    grid-row: 3;
+    text-align: left !important;
+    margin-left: 0 !important;
+  }
+
+  .dashboard-transaction-row > div:nth-child(4) {
+    grid-column: 2;
+    grid-row: 4;
+    text-align: left !important;
+  }
+}
