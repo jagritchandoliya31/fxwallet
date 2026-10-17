@@ -1487,6 +1487,27 @@ function AppContent() {
         </div>
       </aside>
 
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        <Link to="/" className={location.pathname === '/' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>⌂</span><small>Home</small>
+        </Link>
+        <Link to="/market" className={location.pathname === '/market' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>↗</span><small>Market</small>
+        </Link>
+        <Link to="/portfolio" className={location.pathname === '/portfolio' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>◈</span><small>Portfolio</small>
+        </Link>
+        <Link to="/transactions" className={location.pathname === '/transactions' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>⇄</span><small>Trades</small>
+        </Link>
+        <Link to="/advisor" className={location.pathname === '/advisor' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>✦</span><small>Advisor</small>
+        </Link>
+        <Link to="/support" className={location.pathname === '/support' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>?</span><small>Chat</small>
+        </Link>
+      </nav>
+
       <main>
         <Routes>
           <Route
