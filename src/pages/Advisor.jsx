@@ -908,6 +908,7 @@ export default function Advisor() {
 
           {/* INSIGHT ROW */}
           <div
+            className="advisor-insight-row"
             style={{
               display: 'grid',
               gridTemplateColumns:
