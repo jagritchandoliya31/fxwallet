@@ -26,6 +26,15 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "mfa_otp_hash")
+    private String mfaOtpHash;
+
+    @Column(name = "mfa_otp_expires_at")
+    private LocalDateTime mfaOtpExpiresAt;
+
+    @Column(name = "mfa_otp_attempts")
+    private Integer mfaOtpAttempts = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.ROLE_USER;
@@ -126,6 +135,13 @@ private byte[] profileImage;
     public void setPhoneNo(String phoneNo) {
         this.phoneNo = phoneNo;
     }
+
+    public String getMfaOtpHash() { return mfaOtpHash; }
+    public void setMfaOtpHash(String value) { this.mfaOtpHash = value; }
+    public LocalDateTime getMfaOtpExpiresAt() { return mfaOtpExpiresAt; }
+    public void setMfaOtpExpiresAt(LocalDateTime value) { this.mfaOtpExpiresAt = value; }
+    public Integer getMfaOtpAttempts() { return mfaOtpAttempts; }
+    public void setMfaOtpAttempts(Integer value) { this.mfaOtpAttempts = value; }
 
     public String getPassword() {
         return password;
