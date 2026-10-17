@@ -95,7 +95,7 @@ export default function ChatSupport() {
     };
 
     return (
-        <div style={styles.container}>
+        <div className="fx-chat-container" style={styles.container}>
             <div style={styles.header}>
                 <AssistantLogo size={52} />
                 <div>
@@ -145,13 +145,14 @@ export default function ChatSupport() {
                 )}
             </div>
 
-            <div style={styles.inputArea}>
+            <div className="fx-chat-input-area" style={styles.inputArea}>
                 <input
                     type="text"
                     value={input}
                     placeholder="Ask something about FXWallet..."
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={handleKeyDown}
+                    className="fx-chat-input"
                     style={styles.input}
                     disabled={loading}
                 />
@@ -159,6 +160,7 @@ export default function ChatSupport() {
                 <button
                     onClick={handleSend}
                     disabled={loading || !input.trim()}
+                    className="fx-chat-send"
                     style={styles.button}
                 >
                     Send
