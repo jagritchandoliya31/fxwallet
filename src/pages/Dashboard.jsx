@@ -1504,6 +1504,7 @@ export default function Dashboard() {
               return (
                 <div
                   key={`${tx.id}-${index}`}
+                  className="dashboard-transaction-row"
                   style={{
                     display: 'grid',
                     gridTemplateColumns:
