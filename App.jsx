@@ -733,7 +733,7 @@ function Profile() {
   }
 
   return (
-    <div>
+    <div className="profile-page">
       <header>
         <div>
           <p className="eyebrow">ACCOUNT</p>
@@ -741,7 +741,7 @@ function Profile() {
         </div>
       </header>
 
-      <section className="panel">
+      <section className="panel profile-panel">
         <div className="panel-title">
           <div>
             <p className="eyebrow">PROFILE</p>
@@ -775,6 +775,7 @@ function Profile() {
         )}
 
         <div
+          className="profile-info-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '220px 1fr',
@@ -847,6 +848,7 @@ function Profile() {
           </div>
 
           <div
+            className="profile-fields"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
