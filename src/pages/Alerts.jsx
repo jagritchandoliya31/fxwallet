@@ -283,6 +283,7 @@ export default function Alerts() {
 
   return (
     <div
+      className="alerts-page"
       style={{
         minHeight: '100%',
         padding: 28,
@@ -399,6 +400,7 @@ export default function Alerts() {
 
       {/* MAIN GRID */}
       <div
+        className="alerts-main-grid"
         style={{
           display: 'grid',
           gridTemplateColumns:
