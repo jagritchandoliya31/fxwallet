@@ -755,3 +755,33 @@ body { overflow-x: hidden; }
     font-size: 10px !important;
   }
 }
+
+
+
+/* Mobile navigation: equal-width, centered destinations */
+@media (max-width: 850px) {
+  .mobile-bottom-nav {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    justify-items: stretch !important;
+    align-items: stretch !important;
+    padding: 7px 5px !important;
+  }
+
+  .mobile-nav-item {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    justify-self: stretch !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-bottom-nav {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+}
