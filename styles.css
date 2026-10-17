@@ -785,3 +785,49 @@ body { overflow-x: hidden; }
     padding-right: 3px !important;
   }
 }
+
+
+/* Rate Alerts mobile overflow fix */
+.alerts-page {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.alerts-main-grid {
+  min-width: 0;
+}
+
+.alerts-main-grid > section {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 850px) {
+  .alerts-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 18px 14px 110px !important;
+    overflow-x: hidden;
+  }
+
+  .alerts-main-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .alerts-main-grid > section {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .alerts-page input,
+  .alerts-page select,
+  .alerts-page button {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
