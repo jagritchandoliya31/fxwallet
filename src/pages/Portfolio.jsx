@@ -444,6 +444,7 @@ export default function Portfolio() {
       >
         {/* PORTFOLIO VALUE */}
         <div
+          className="portfolio-value-card"
           style={{
             position: 'relative',
             overflow: 'hidden',
@@ -645,6 +646,7 @@ export default function Portfolio() {
 
         {/* PERFORMANCE */}
         <div
+          className="portfolio-performance-card"
           style={{
             background: '#ffffff',
             border: '1px solid #e2e8f0',
