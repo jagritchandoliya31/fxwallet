@@ -65,7 +65,7 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public MfaResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         User user = userRepository.findByEmail(request.email())
