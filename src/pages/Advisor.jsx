@@ -434,6 +434,7 @@ export default function Advisor() {
 
         {/* CURRENCY SELECTOR */}
         <div
+          className="advisor-currency-selector"
           style={{
             background: '#ffffff',
             border: '1px solid #e2e8f0',
