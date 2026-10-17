@@ -1503,8 +1503,8 @@ function AppContent() {
         <Link to="/advisor" className={location.pathname === '/advisor' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
           <span>✦</span><small>Advisor</small>
         </Link>
-        <Link to="/support" className={location.pathname === '/support' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
-          <span>?</span><small>Chat</small>
+        <Link to="/profile" className={location.pathname === '/profile' ? 'mobile-nav-item active' : 'mobile-nav-item'}>
+          <span>◉</span><small>Profile</small>
         </Link>
       </nav>
 
