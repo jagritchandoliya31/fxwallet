@@ -9,8 +9,6 @@ import com.fxwallet.repository.WalletRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
@@ -27,20 +25,20 @@ public class PremiumService {
     private final WalletRepository walletRepository;
     private final PremiumSubscriptionRepository premiumSubscriptionRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
     public PremiumService(
             UserRepository userRepository,
             WalletRepository walletRepository,
             PremiumSubscriptionRepository premiumSubscriptionRepository,
             PasswordEncoder passwordEncoder,
-            JavaMailSender mailSender) {
+            EmailService emailService) {
 
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.premiumSubscriptionRepository = premiumSubscriptionRepository;
         this.passwordEncoder = passwordEncoder;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     public void sendPurchaseVerificationCode() {
@@ -51,12 +49,12 @@ public class PremiumService {
         user.setMfaOtpAttempts(0);
         userRepository.save(user);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setSubject("FXWallet Premium Purchase Verification");
-        message.setText("Your FXWallet Premium purchase verification code is: " + otp
-                + "\n\nThis 4-digit code expires in 5 minutes.");
-        mailSender.send(message);
+        emailService.sendOtp(
+                user.getEmail(),
+                "FXWallet Premium Purchase Verification",
+                otp,
+                "Premium purchase"
+        );
     }
 
     public User verifyPurchaseAndActivate(String otp) {
