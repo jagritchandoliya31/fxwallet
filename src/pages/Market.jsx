@@ -878,6 +878,7 @@ export default function Market() {
 
           {/* RATE SUMMARY */}
           <div
+            className="market-rate-summary"
             style={{
               display: 'grid',
               gridTemplateColumns:
