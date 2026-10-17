@@ -497,6 +497,7 @@ export default function Dashboard() {
 
       {/* HERO */}
       <section
+        className="dashboard-hero"
         style={{
           display: 'grid',
           gridTemplateColumns:
@@ -917,6 +918,7 @@ export default function Dashboard() {
 
       {/* SUMMARY CARDS */}
       <section
+        className="dashboard-summary-grid"
         style={{
           display: 'grid',
           gridTemplateColumns:
@@ -959,6 +961,7 @@ export default function Dashboard() {
 
       {/* MARKET + TRADE */}
       <section
+        className="dashboard-market-grid"
         style={{
           display: 'grid',
           gridTemplateColumns:
