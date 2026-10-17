@@ -387,6 +387,7 @@ export default function Transactions() {
 
   return (
     <div
+      className="transactions-page"
       style={{
         minHeight: '100%',
         padding: 28,
@@ -514,6 +515,7 @@ export default function Transactions() {
 
       {/* DARK OVERVIEW */}
       <section
+        className="transactions-overview"
         style={{
           position:
             'relative',
@@ -835,6 +837,7 @@ export default function Transactions() {
 
       {/* TRANSACTION CENTER */}
       <section
+        className="transactions-center"
         style={{
           background: '#ffffff',
           border:
@@ -1144,6 +1147,7 @@ export default function Transactions() {
                 return (
                   <div
                     key={`${tx.id}-${index}`}
+                    className="transaction-row"
                     style={{
                       display:
                         'grid',
