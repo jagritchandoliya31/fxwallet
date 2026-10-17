@@ -3,8 +3,6 @@ package com.fxwallet.service;
 import com.fxwallet.dto.AuthResponse;
 import com.fxwallet.dto.LoginRequest;
 import com.fxwallet.dto.MfaResponse;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import com.fxwallet.dto.RegisterRequest;
 import com.fxwallet.entity.User;
 import com.fxwallet.entity.Wallet;
@@ -31,16 +29,16 @@ public class AuthService {
     private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
     public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
-                       WalletRepository walletRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, JavaMailSender mailSender) {
+                       WalletRepository walletRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailService emailService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -126,12 +124,12 @@ public class AuthService {
         user.setMfaOtpAttempts(0);
         userRepository.save(user);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setSubject("FXWallet MFA Verification Code");
-        message.setText("Your FXWallet verification code is: " + otp +
-                "\n\nThis 4-digit code expires in 5 minutes.");
-        mailSender.send(message);
+        emailService.sendOtp(
+                user.getEmail(),
+                "FXWallet MFA Verification Code",
+                otp,
+                "login"
+        );
     }
 
     private AuthResponse buildAuthResponse(User user) {
