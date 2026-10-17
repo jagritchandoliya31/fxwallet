@@ -8,6 +8,7 @@ import com.fxwallet.entity.Holding;
 import com.fxwallet.entity.Transaction;
 import com.fxwallet.entity.User;
 import com.fxwallet.entity.Wallet;
+import com.fxwallet.entity.RateAlert;
 import com.fxwallet.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,8 @@ public class SecurityIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    @Autowired
+    private RateAlertRepository rateAlertRepository;
     @MockBean
     private com.fxwallet.service.RateService rateService;
 
@@ -63,6 +66,7 @@ public class SecurityIntegrationTest {
 
     @BeforeEach
     public void setup() throws Exception {
+        rateAlertRepository.deleteAll();
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
         walletRepository.deleteAll();
@@ -158,6 +162,70 @@ public class SecurityIntegrationTest {
         mockMvc.perform(get("/api/alerts")
                 .header("Authorization", authHeader(userBToken)))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    public void users_shouldOnlySeeTheirOwnTransactions() throws Exception {
+        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+
+        Transaction bTransaction = new Transaction();
+        bTransaction.setUser(userB);
+        bTransaction.setCurrency(usd);
+        bTransaction.setType(Transaction.Type.BUY);
+        bTransaction.setInrAmount(new BigDecimal("1000"));
+        bTransaction.setQuantity(new BigDecimal("10"));
+        bTransaction.setExchangeRate(new BigDecimal("85"));
+        bTransaction.setRealizedPl(BigDecimal.ZERO);
+        bTransaction.setPlatformFee(BigDecimal.ONE);
+        transactionRepository.save(bTransaction);
+
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader(userAToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty());
+
+        mockMvc.perform(get("/api/transactions")
+                .header("Authorization", authHeader(userBToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+    @Test
+    public void users_shouldOnlySeeTheirOwnPortfolio() throws Exception {
+        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+
+        holdingRepository.save(new Holding(null, userB, usd, new BigDecimal("25"),
+                new BigDecimal("85"), null, null));
+
+        mockMvc.perform(get("/api/portfolio")
+                .header("Authorization", authHeader(userAToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holdings").isEmpty());
+
+        mockMvc.perform(get("/api/portfolio")
+                .header("Authorization", authHeader(userBToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holdings.length()").value(1))
+            .andExpect(jsonPath("$.holdings[0].code").value("USD"));
+    }
+
+    @Test
+    public void users_shouldNotDeleteAnotherUsersAlert() throws Exception {
+        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+
+        RateAlert alert = new RateAlert();
+        alert.setUser(userB);
+        alert.setCurrency(usd);
+        alert.setTargetRate(new BigDecimal("90"));
+        alert.setTriggered(false);
+        rateAlertRepository.save(alert);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .delete("/api/alerts/" + alert.getId())
+                .header("Authorization", authHeader(userAToken)))
+            .andExpect(status().isNotFound());
+
+        assertEquals(1, rateAlertRepository.findByUserId(userB.getId()).size());
     }
 
     @Test
