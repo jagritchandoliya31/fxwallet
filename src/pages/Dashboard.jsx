@@ -391,6 +391,7 @@ export default function Dashboard() {
     >
       {/* HEADER */}
       <header
+        className="dashboard-header"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -445,6 +446,7 @@ export default function Dashboard() {
         </div>
 
         <div
+          className="dashboard-header-actions"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -473,7 +475,11 @@ export default function Dashboard() {
             {refreshing ? 'Refreshing...' : '↻ Refresh'}
           </button>
 
-          <div
+          <Link
+            to="/profile"
+            className="dashboard-profile-button"
+            aria-label="Open Profile"
+            title="Profile"
             style={{
               width: 42,
               height: 42,
@@ -488,10 +494,11 @@ export default function Dashboard() {
               fontWeight: 850,
               boxShadow:
                 '0 8px 18px rgba(37,99,235,0.22)',
+              textDecoration: 'none',
             }}
           >
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
+          </Link>
         </div>
       </header>
 
