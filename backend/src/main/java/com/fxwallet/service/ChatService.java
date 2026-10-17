@@ -22,7 +22,7 @@ public class ChatService {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${GEMINI_API_KEY}")
+    @Value("${GEMINI_API_KEY:}")
     private String geminiApiKey;
 
     public ChatService(ObjectMapper objectMapper) {
@@ -42,6 +42,11 @@ public class ChatService {
     }
 
     public void streamResponse(String message, java.io.OutputStream outputStream) throws Exception {
+        if (geminiApiKey == null || geminiApiKey.isBlank()) {
+            log.warn("GEMINI_API_KEY is not configured; chat assistant is disabled.");
+            writeStreamEvent(outputStream, "The FXWallet AI Assistant is currently unavailable.");
+            return;
+        }
         String systemPrompt = """
                 You are the FXWallet Assistant.
                 Help users understand FXWallet features, rates, holdings, BUY/SELL,
@@ -127,6 +132,10 @@ public class ChatService {
     }
 
     public String getResponse(String message) {
+        if (geminiApiKey == null || geminiApiKey.isBlank()) {
+            log.warn("GEMINI_API_KEY is not configured; chat assistant is disabled.");
+            return "The FXWallet AI Assistant is currently unavailable.";
+        }
         String systemPrompt = """
                 You are the FXWallet Assistant.
 
