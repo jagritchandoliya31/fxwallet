@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { register as apiRegister, login as apiLogin } from '../api/authApi';
+import { register as apiRegister, login as apiLogin, verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp } from '../api/authApi';
 
 const AuthContext = createContext(null);
 
@@ -24,11 +24,45 @@ export function AuthProvider({ children }) {
     setError('');
     try {
       const data = await apiLogin({ email, password });
+      if (data.mfaRequired) {
+        return data;
+      }
       localStorage.setItem('fxwallet_token', data.token);
       setUser({ name: data.name, email: data.email, role: data.role });
       return data;
     } catch (err) {
       const message = err.response?.data?.message || 'Login failed';
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (email, otp) => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiVerifyOtp(email, otp);
+      localStorage.setItem('fxwallet_token', data.token);
+      setUser({ name: data.name, email: data.email, role: data.role });
+      return data;
+    } catch (err) {
+      const message = err.response?.data?.message || 'Invalid OTP';
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async (email) => {
+    setLoading(true);
+    setError('');
+    try {
+      return await apiResendOtp(email);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to resend OTP';
       setError(message);
       throw err;
     } finally {
@@ -60,7 +94,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, error, setError }}>
+    <AuthContext.Provider value={{ user, login, verifyOtp, resendOtp, register, logout, loading, error, setError }}>
       {children}
     </AuthContext.Provider>
   );
