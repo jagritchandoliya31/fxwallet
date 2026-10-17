@@ -10,10 +10,37 @@ function cleanAssistantText(text) {
         .replace(/^#{1,6}\s+/gm, "")
         .replace(/\*\s+/g, "• ")
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-        .replace(/```[\s\S]*?```/g, (block) =>
-            block.replace(/```[\w-]*\n?/g, "").replace(/```/g, "")
+        .replace(/\`\`\`[\s\S]*?\`\`\`/g, (block) =>
+            block.replace(/\`\`\`[\w-]*\n?/g, "").replace(/\`\`\`/g, "")
         )
         .trim();
+}
+
+function AssistantLogo({ size = 44 }) {
+    return (
+        <div
+            aria-hidden="true"
+            style={{ ...styles.logo, width: size, height: size }}
+        >
+            <svg
+                width={size * 0.62}
+                height={size * 0.62}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <rect x="12" y="18" width="40" height="32" rx="12" fill="white" />
+                <rect x="18" y="25" width="28" height="18" rx="8" fill="#172554" />
+                <circle cx="27" cy="34" r="3" fill="#60A5FA" />
+                <circle cx="37" cy="34" r="3" fill="#60A5FA" />
+                <path d="M27 39C29.5 41 34.5 41 37 39" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M32 18V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="32" cy="9" r="4" fill="white" />
+                <path d="M49 47L57 39" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                <path d="M50 39H57V46" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        </div>
+    );
 }
 
 export default function ChatSupport() {
@@ -79,9 +106,14 @@ export default function ChatSupport() {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
+                <AssistantLogo size={52} />
                 <div>
                     <h2 style={styles.title}>FXWallet Assistant</h2>
-                    <p style={styles.subtitle}>Ask me about FXWallet</p>
+                    <p style={styles.subtitle}>Your AI-powered FX assistant</p>
+                </div>
+                <div style={styles.onlineBadge}>
+                    <span style={styles.onlineDot}></span>
+                    Online
                 </div>
             </div>
 
@@ -90,19 +122,34 @@ export default function ChatSupport() {
                     <div
                         key={index}
                         style={{
-                            ...styles.message,
+                            ...styles.messageRow,
                             ...(message.role === "user"
-                                ? styles.userMessage
-                                : styles.assistantMessage),
+                                ? styles.userRow
+                                : styles.assistantRow),
                         }}
                     >
-                        {message.text}
+                        {message.role === "assistant" && <AssistantLogo size={34} />}
+                        <div
+                            style={{
+                                ...styles.message,
+                                ...(message.role === "user"
+                                    ? styles.userMessage
+                                    : styles.assistantMessage),
+                            }}
+                        >
+                            {message.text}
+                        </div>
                     </div>
                 ))}
 
                 {loading && (
-                    <div style={styles.assistantMessage}>
-                        <span style={styles.thinkingLabel}>Thinking<span style={styles.dots}>...</span></span>
+                    <div style={styles.messageRow}>
+                        <AssistantLogo size={34} />
+                        <div style={styles.assistantMessage}>
+                            <span style={styles.thinkingLabel}>
+                                Thinking<span style={styles.dots}>...</span>
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>
@@ -143,8 +190,21 @@ const styles = {
     },
 
     header: {
-        padding: "20px",
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        padding: "16px 20px",
         borderBottom: "1px solid #e5e7eb",
+    },
+
+    logo: {
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+        boxShadow: "0 4px 10px rgba(37, 99, 235, 0.22)",
     },
 
     title: {
@@ -153,9 +213,29 @@ const styles = {
     },
 
     subtitle: {
-        margin: "5px 0 0",
+        margin: "4px 0 0",
         color: "#6b7280",
-        fontSize: "14px",
+        fontSize: "13px",
+    },
+
+    onlineBadge: {
+        marginLeft: "auto",
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "6px 10px",
+        borderRadius: "999px",
+        background: "#ecfdf5",
+        color: "#047857",
+        fontSize: "12px",
+        fontWeight: 600,
+    },
+
+    onlineDot: {
+        width: "7px",
+        height: "7px",
+        borderRadius: "50%",
+        background: "#10b981",
     },
 
     messages: {
@@ -168,6 +248,20 @@ const styles = {
         gap: "12px",
     },
 
+    messageRow: {
+        display: "flex",
+        alignItems: "flex-end",
+        gap: "8px",
+    },
+
+    assistantRow: {
+        alignSelf: "flex-start",
+    },
+
+    userRow: {
+        alignSelf: "flex-end",
+    },
+
     message: {
         padding: "12px 16px",
         borderRadius: "12px",
@@ -178,15 +272,15 @@ const styles = {
     },
 
     userMessage: {
-        alignSelf: "flex-end",
         background: "#111827",
         color: "#ffffff",
+        borderBottomRightRadius: "4px",
     },
 
     assistantMessage: {
-        alignSelf: "flex-start",
         background: "#f3f4f6",
         color: "#111827",
+        borderBottomLeftRadius: "4px",
     },
 
     thinkingLabel: {
