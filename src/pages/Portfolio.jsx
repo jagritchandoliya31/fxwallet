@@ -433,6 +433,7 @@ export default function Portfolio() {
 
       {/* HERO */}
       <section
+        className="portfolio-hero"
         style={{
           display: 'grid',
           gridTemplateColumns:
