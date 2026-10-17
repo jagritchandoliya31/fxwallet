@@ -514,3 +514,48 @@ body { overflow-x: hidden; }
     text-align: left !important;
   }
 }
+
+
+/* Advisor currency selector mobile fix */
+.advisor-currency-selector {
+  min-width: 0;
+}
+
+.advisor-currency-selector > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 850px) {
+  .advisor-currency-selector {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    justify-content: flex-start !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .advisor-currency-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .advisor-currency-selector > button {
+    padding: 8px 11px !important;
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .advisor-currency-selector {
+    gap: 3px !important;
+    padding: 5px !important;
+    border-radius: 14px !important;
+  }
+
+  .advisor-currency-selector > button {
+    padding: 8px 9px !important;
+    font-size: 11px !important;
+  }
+}
