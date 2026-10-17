@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   AreaChart,
   Area,
@@ -597,23 +598,55 @@ export default function Market() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={loadRates}
+        <div
+          className="market-header-actions"
           style={{
-            border: '1px solid #dbe3ef',
-            background: '#ffffff',
-            color: '#334155',
-            borderRadius: 12,
-            padding: '10px 15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow:
-              '0 4px 14px rgba(15,23,42,0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
           }}
         >
-          ↻ Refresh Rates
-        </button>
+          <Link
+            to="/alerts"
+            className="market-alert-button"
+            style={{
+              border: '1px solid #dbeafe',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              borderRadius: 12,
+              padding: '10px 15px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow:
+                '0 4px 14px rgba(37,99,235,0.07)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+            }}
+          >
+            🔔 Rate Alerts
+          </Link>
+
+          <button
+            type="button"
+            onClick={loadRates}
+            style={{
+              border: '1px solid #dbe3ef',
+              background: '#ffffff',
+              color: '#334155',
+              borderRadius: 12,
+              padding: '10px 15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow:
+                '0 4px 14px rgba(15,23,42,0.05)',
+            }}
+          >
+            ↻ Refresh Rates
+          </button>
+        </div>
       </div>
 
       {/* ERROR */}
