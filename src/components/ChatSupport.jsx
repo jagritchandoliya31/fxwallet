@@ -22,23 +22,14 @@ function AssistantLogo({ size = 44 }) {
             aria-hidden="true"
             style={{ ...styles.logo, width: size, height: size }}
         >
-            <svg
-                width={size * 0.62}
-                height={size * 0.62}
-                viewBox="0 0 64 64"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-            >
-                <rect x="12" y="18" width="40" height="32" rx="12" fill="white" />
-                <rect x="18" y="25" width="28" height="18" rx="8" fill="#172554" />
-                <circle cx="27" cy="34" r="3" fill="#60A5FA" />
-                <circle cx="37" cy="34" r="3" fill="#60A5FA" />
-                <path d="M27 39C29.5 41 34.5 41 37 39" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M32 18V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                <circle cx="32" cy="9" r="4" fill="white" />
-                <path d="M49 47L57 39" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                <path d="M50 39H57V46" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <div style={{ ...styles.orb, width: size, height: size }}>
+                <div style={styles.orbGlow}></div>
+                <div style={styles.orbCore}>
+                    <div style={styles.orbRing}></div>
+                    <div style={styles.orbSpark}></div>
+                    <div style={styles.orbArrow}></div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -109,7 +100,7 @@ export default function ChatSupport() {
                 <AssistantLogo size={52} />
                 <div>
                     <h2 style={styles.title}>FXWallet Assistant</h2>
-                    <p style={styles.subtitle}>Your AI-powered FX assistant</p>
+                    <p style={styles.subtitle}>Your AI-powered FX intelligence</p>
                 </div>
                 <div style={styles.onlineBadge}>
                     <span style={styles.onlineDot}></span>
