@@ -32,3 +32,209 @@ form input, form select { padding: 10px 12px; border-radius: 10px; border: 1px s
 .rate-row:last-child { border-bottom: none; }
 .currency-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #eef6ff; color: #14734a; font-weight: 700; font-size: 14px; }
 .rate-price { text-align: right; } 
+
+
+/* Responsive mobile app layout */
+html, body, #root { width: 100%; min-height: 100%; }
+body { overflow-x: hidden; }
+.mobile-bottom-nav { display: none; }
+
+@media (max-width: 850px) {
+  .app-shell { min-height: 100vh; width: 100%; }
+  .sidebar { display: none !important; }
+
+  main,
+  .auth-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    padding: 18px 14px 92px !important;
+  }
+
+  header {
+    margin-bottom: 20px;
+    gap: 12px;
+  }
+
+  h1 { font-size: 24px; }
+  h2 { font-size: 18px; }
+
+  .panel,
+  .stats article {
+    border-radius: 14px;
+  }
+
+  .panel { padding: 16px; }
+  .panel-title { gap: 10px; }
+  .panel-title h2 { margin-bottom: 14px; }
+
+  .stats,
+  .content-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .stats article { padding: 17px; }
+  .holding-grid { grid-template-columns: 1fr !important; }
+
+  .rate-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .rate-row strong,
+  .rate-row small,
+  .rate-price {
+    font-size: 12px;
+  }
+
+  .transaction {
+    grid-template-columns: 46px minmax(0, 1fr) auto !important;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .transaction small { display: none; }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    align-items: stretch;
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 1000;
+    padding: 7px 4px;
+    border: 1px solid #dfe6f0;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 10px 30px rgba(15,23,42,0.16);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-nav-item {
+    min-width: 0;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 12px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .mobile-nav-item span {
+    font-size: 18px;
+    line-height: 20px;
+  }
+
+  .mobile-nav-item small {
+    color: inherit;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .mobile-nav-item.active {
+    color: #2563eb;
+    background: #eff6ff;
+  }
+
+  .mobile-nav-item.active span {
+    font-weight: 900;
+  }
+
+  /* Login / register */
+  .auth-main {
+    align-items: flex-start !important;
+    min-height: 100dvh !important;
+    padding: 16px 14px 24px !important;
+  }
+
+  .login-layout {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    max-width: 520px !important;
+    margin: 0 auto;
+  }
+
+  .login-layout > section:first-child {
+    min-height: auto !important;
+    padding: 24px !important;
+    border-radius: 20px !important;
+  }
+
+  .login-layout > section:first-child h1 {
+    margin-top: 20px !important;
+    font-size: 34px !important;
+  }
+
+  .login-layout > section:last-child {
+    padding: 24px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Make common wide controls fit small screens */
+  input, select, button { max-width: 100%; }
+  .content-grid > *, .stats > *, .holding-grid > * { min-width: 0; }
+
+  /* Tables/lists should scroll instead of breaking the viewport */
+  .panel table,
+  .table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  main,
+  .auth-main {
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+  }
+
+  header {
+    align-items: flex-start;
+  }
+
+  .eyebrow { font-size: 9px; }
+  h1 { font-size: 22px; }
+
+  .panel { padding: 14px; }
+  .stats article { padding: 15px; }
+
+  .mobile-bottom-nav {
+    left: 5px;
+    right: 5px;
+    border-radius: 16px;
+  }
+
+  .mobile-nav-item {
+    min-height: 50px;
+  }
+
+  .mobile-nav-item span { font-size: 17px; }
+  .mobile-nav-item small { font-size: 8px; }
+
+  .login-layout > section:first-child h1 {
+    font-size: 30px !important;
+  }
+
+  .login-layout > section:first-child {
+    padding: 20px !important;
+  }
+
+  .login-layout > section:last-child {
+    padding: 20px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-nav-item small { font-size: 7px; }
+  .mobile-nav-item span { font-size: 16px; }
+}
