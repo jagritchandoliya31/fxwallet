@@ -121,7 +121,7 @@ function LoginForm({ mode }) {
           }}>
             <input
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
@@ -131,7 +131,7 @@ function LoginForm({ mode }) {
               style={{ width: '100%', boxSizing: 'border-box', height: 58, textAlign: 'center', letterSpacing: '0.65em', fontSize: 26, fontWeight: 800, border: '1px solid #dbe3ee', borderRadius: 13, background: '#f8fafc', outline: 'none' }}
             />
             {error && <div style={{ marginTop: 14, padding: 11, borderRadius: 10, background: '#fff1f2', color: '#be123c', fontSize: 12 }}>{error}</div>}
-            <button type="submit" disabled={loading || otp.length !== 6} style={{ width: '100%', height: 50, marginTop: 16, border: 'none', borderRadius: 13, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', fontWeight: 800, opacity: loading || otp.length !== 4 ? .65 : 1 }}>
+            <button type="submit" disabled={loading || otp.length !== 6} style={{ width: '100%', height: 50, marginTop: 16, border: 'none', borderRadius: 13, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', fontWeight: 800, opacity: loading || otp.length !== 6 ? .65 : 1 }}>
               {loading ? 'Verifying...' : 'Verify & Continue'}
             </button>
           </form>
