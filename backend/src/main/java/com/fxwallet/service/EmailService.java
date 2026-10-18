@@ -42,7 +42,7 @@ public class EmailService {
                       <h2 style="color:#1d4ed8">FXWallet</h2>
                       <p>Your %s verification code is:</p>
                       <div style="font-size:36px;font-weight:800;letter-spacing:10px;margin:24px 0">%s</div>
-                      <p>This 4-digit code expires in <strong>5 minutes</strong>.</p>
+                      <p>This verification code expires in <strong>5 minutes</strong>.</p>
                       <p style="color:#64748b;font-size:12px">If you did not request this code, you can safely ignore this email.</p>
                     </div>
                     """.formatted(purpose, otp);
