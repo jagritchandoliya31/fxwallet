@@ -13,6 +13,11 @@ export const login = async (data) => {
   return response.data;
 };
 
+export const loginWithOtp = async (email) => {
+  const response = await authApi.post('/login-with-otp', null, { params: { email } });
+  return response.data;
+};
+
 
 export const verifyOtp = async (email, otp) => {
   const response = await authApi.post('/verify-otp', null, { params: { email, otp } });
