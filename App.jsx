@@ -59,13 +59,14 @@ function RefreshBrand() {
 }
 
 function LoginForm({ mode }) {
-  const { login, verifyOtp, resendOtp, register, error, setError, loading } = useAuth();
+  const { login, loginWithOtp, verifyOtp, resendOtp, register, error, setError, loading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [mfaEmail, setMfaEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpMode, setOtpMode] = useState('password');
 
   const isRegister = mode === 'register';
 
@@ -79,8 +80,23 @@ function LoginForm({ mode }) {
       } else {
         const data = await login(email, password);
         if (data?.mfaRequired) {
+          setOtpMode('password');
           setMfaEmail(data.email);
         }
+      }
+    } catch {
+      // Error handled in AuthContext
+    }
+  };
+
+  const handleLoginWithOtp = async () => {
+    setError('');
+    try {
+      const data = await loginWithOtp(email);
+      if (data?.mfaRequired) {
+        setOtpMode('passwordless');
+        setMfaEmail(data.email);
+        setOtp('');
       }
     } catch {
       // Error handled in AuthContext
@@ -95,7 +111,7 @@ function LoginForm({ mode }) {
             <div style={{ fontSize: 34, marginBottom: 10 }}>🔐</div>
             <h2 style={{ margin: 0, color: '#0f172a' }}>Verify your login</h2>
             <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-              We sent a <strong>4-digit OTP</strong> to {mfaEmail}. It expires in 5 minutes.
+              {otpMode === 'passwordless' ? 'We sent a 6-digit login OTP' : 'We sent a 6-digit MFA OTP'} to {mfaEmail}. It expires in 5 minutes.
             </p>
           </div>
           <form onSubmit={async (e) => {
@@ -108,21 +124,21 @@ function LoginForm({ mode }) {
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={4}
-              placeholder="••••"
+              maxLength={6}
+              placeholder="••••••"
               autoFocus
               required
               style={{ width: '100%', boxSizing: 'border-box', height: 58, textAlign: 'center', letterSpacing: '0.65em', fontSize: 26, fontWeight: 800, border: '1px solid #dbe3ee', borderRadius: 13, background: '#f8fafc', outline: 'none' }}
             />
             {error && <div style={{ marginTop: 14, padding: 11, borderRadius: 10, background: '#fff1f2', color: '#be123c', fontSize: 12 }}>{error}</div>}
-            <button type="submit" disabled={loading || otp.length !== 4} style={{ width: '100%', height: 50, marginTop: 16, border: 'none', borderRadius: 13, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', fontWeight: 800, opacity: loading || otp.length !== 4 ? .65 : 1 }}>
+            <button type="submit" disabled={loading || otp.length !== 6} style={{ width: '100%', height: 50, marginTop: 16, border: 'none', borderRadius: 13, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', fontWeight: 800, opacity: loading || otp.length !== 4 ? .65 : 1 }}>
               {loading ? 'Verifying...' : 'Verify & Continue'}
             </button>
           </form>
           <button type="button" disabled={loading} onClick={async () => { try { await resendOtp(mfaEmail); } catch {} }} style={{ width: '100%', marginTop: 12, height: 44, border: '1px solid #dbe3ee', borderRadius: 12, background: '#fff', color: '#334155', fontWeight: 700 }}>
             Resend OTP
           </button>
-          <button type="button" onClick={() => { setMfaEmail(''); setOtp(''); setError(''); }} style={{ width: '100%', marginTop: 8, border: 'none', background: 'transparent', color: '#2563eb', fontWeight: 700 }}>
+          <button type="button" onClick={() => { setMfaEmail(''); setOtp(''); setOtpMode('password'); setError(''); }} style={{ width: '100%', marginTop: 8, border: 'none', background: 'transparent', color: '#2563eb', fontWeight: 700 }}>
             ← Back to login
           </button>
         </div>
@@ -549,6 +565,29 @@ function LoginForm({ mode }) {
                   ? 'Create FXWallet Account'
                   : 'Sign In'}
             </button>
+
+            {!isRegister && (
+              <button
+                type="button"
+                onClick={handleLoginWithOtp}
+                disabled={loading || !email}
+                style={{
+                  width: '100%',
+                  height: '46px',
+                  marginTop: '10px',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '13px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: loading || !email ? 'not-allowed' : 'pointer',
+                  opacity: loading || !email ? 0.6 : 1,
+                }}
+              >
+                {loading ? 'Sending OTP...' : 'Login with Email OTP'}
+              </button>
+            )}
 
             <div
               style={{
