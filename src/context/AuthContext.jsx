@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { register as apiRegister, login as apiLogin, verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp } from '../api/authApi';
+import { register as apiRegister, login as apiLogin, loginWithOtp as apiLoginWithOtp, verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp } from '../api/authApi';
 
 const AuthContext = createContext(null);
 
@@ -32,6 +32,20 @@ export function AuthProvider({ children }) {
       return data;
     } catch (err) {
       const message = err.response?.data?.message || 'Login failed';
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginWithOtp = async (email) => {
+    setLoading(true);
+    setError('');
+    try {
+      return await apiLoginWithOtp(email);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to send login OTP';
       setError(message);
       throw err;
     } finally {
@@ -94,7 +108,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyOtp, resendOtp, register, logout, loading, error, setError }}>
+    <AuthContext.Provider value={{ user, login, loginWithOtp, verifyOtp, resendOtp, register, logout, loading, error, setError }}>
       {children}
     </AuthContext.Provider>
   );
