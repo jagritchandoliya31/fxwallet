@@ -6,7 +6,4 @@ export const premiumApi = {
 
   confirmPremiumPurchase: (otp) =>
     api.post('/premium/confirm-purchase', null, { params: { otp } }).then((res) => res.data),
-
-  purchasePremium: () =>
-    api.post('/premium/purchase').then((res) => res.data),
 };
