@@ -18,9 +18,16 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @PostMapping("/login-with-otp")
+    public ResponseEntity<MfaResponse> loginWithOtp(@RequestParam String email) {
+        return ResponseEntity.ok(authService.loginWithOtp(email));
+    }
+
     @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse> verifyOtp(@RequestParam String email, @RequestParam String otp) {
-        return ResponseEntity.ok(authService.verifyOtp(email, otp));
+    public ResponseEntity<AuthResponse> verifyOtp(
+            @RequestParam String email,
+            @RequestParam String otp) {
+        return ResponseEntity.ok(authService.verifyLoginOtp(email, otp));
     }
 
     @PostMapping("/resend-otp")
@@ -35,7 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<MfaResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 }
