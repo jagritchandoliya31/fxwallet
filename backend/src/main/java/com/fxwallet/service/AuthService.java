@@ -19,8 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class AuthService {
@@ -29,16 +27,21 @@ public class AuthService {
     private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final EmailService emailService;
+    private final OtpService otpService;
 
-    public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
-                       WalletRepository walletRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailService emailService) {
+    public AuthService(
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            WalletRepository walletRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            OtpService otpService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.emailService = emailService;
+        this.otpService = otpService;
     }
 
     @Transactional
@@ -63,73 +66,49 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
+    /**
+     * Normal login: password first, then mandatory email MFA.
+     */
     public MfaResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
+        authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole().name().replace("ROLE_", ""))
-                .build();
-        sendOtp(user);
+
+        otpService.sendLoginOtp(user);
         return new MfaResponse(true, user.getEmail(), user.getName());
     }
 
-    public AuthResponse verifyOtp(String email, String otp) {
+    /**
+     * Passwordless fallback: user can request a login OTP using the registered email.
+     */
+    public MfaResponse loginWithOtp(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid MFA request"));
+                .orElseThrow(() -> new BadCredentialsException("Unable to start OTP login"));
 
-        if (user.getMfaOtpHash() == null || user.getMfaOtpExpiresAt() == null ||
-                user.getMfaOtpExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadCredentialsException("OTP expired. Please login again.");
+        otpService.sendLoginOtp(user);
+        return new MfaResponse(true, user.getEmail(), user.getName());
+    }
+
+    public AuthResponse verifyLoginOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid OTP login request"));
+
+        try {
+            otpService.verify(user, otp, com.fxwallet.entity.OtpVerification.Purpose.LOGIN);
+        } catch (IllegalArgumentException ex) {
+            throw new BadCredentialsException(ex.getMessage());
         }
 
-        int attempts = user.getMfaOtpAttempts() == null ? 0 : user.getMfaOtpAttempts();
-        if (attempts >= 5) {
-            throw new BadCredentialsException("Too many OTP attempts. Please login again.");
-        }
-
-        user.setMfaOtpAttempts(attempts + 1);
-        if (!passwordEncoder.matches(otp, user.getMfaOtpHash())) {
-            userRepository.save(user);
-            throw new BadCredentialsException("Invalid OTP");
-        }
-
-        user.setMfaOtpHash(null);
-        user.setMfaOtpExpiresAt(null);
-        user.setMfaOtpAttempts(0);
-        userRepository.save(user);
-
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole().name().replace("ROLE_", ""))
-                .build();
-        String token = jwtUtil.generateToken(userDetails);
-        return new AuthResponse(token, user.getName(), user.getEmail(), user.getRole().name());
+        return buildAuthResponse(user);
     }
 
     public void resendOtp(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid MFA request"));
-        sendOtp(user);
-    }
+                .orElseThrow(() -> new BadCredentialsException("Unable to resend OTP"));
 
-    private void sendOtp(User user) {
-        String otp = String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
-        user.setMfaOtpHash(passwordEncoder.encode(otp));
-        user.setMfaOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
-        user.setMfaOtpAttempts(0);
-        userRepository.save(user);
-
-        emailService.sendOtp(
-                user.getEmail(),
-                "FXWallet MFA Verification Code",
-                otp,
-                "login"
-        );
+        otpService.sendLoginOtp(user);
     }
 
     private AuthResponse buildAuthResponse(User user) {
@@ -138,6 +117,7 @@ public class AuthService {
                 .password(user.getPassword())
                 .roles(user.getRole().name().replace("ROLE_", ""))
                 .build();
+
         String token = jwtUtil.generateToken(userDetails);
         return new AuthResponse(token, user.getName(), user.getEmail(), user.getRole().name());
     }
