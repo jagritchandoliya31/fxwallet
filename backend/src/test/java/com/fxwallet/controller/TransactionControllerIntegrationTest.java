@@ -1,7 +1,6 @@
 package com.fxwallet.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fxwallet.dto.LoginRequest;
 import com.fxwallet.dto.RegisterRequest;
 import com.fxwallet.entity.Currency;
 import com.fxwallet.entity.Holding;
@@ -65,40 +64,62 @@ public class TransactionControllerIntegrationTest {
 
     @BeforeEach
     public void setup() throws Exception {
+
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
         currencyRepository.deleteAll();
 
+        // Create USD currency
         Currency usdCurrency = new Currency();
         usdCurrency.setCode("USD");
         usdCurrency.setName("US Dollar");
         usdCurrency.setSymbol("$");
         usdCurrency.setActive(true);
+
         currencyRepository.save(usdCurrency);
 
-        RegisterRequest registerRequest = new RegisterRequest("John Doe", "john@example.com", "password123");
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(registerRequest)))
-            .andExpect(status().isOk());
+        // Register test user
+        RegisterRequest registerRequest =
+                new RegisterRequest(
+                        "John Doe",
+                        "john@example.com",
+                        "password123"
+                );
 
-        user = userRepository.findByEmail("john@example.com").orElseThrow();
+        // Registration returns JWT directly.
+        // We use this token instead of calling /api/auth/login,
+        // because normal login now requires OTP.
+        String registerResponse =
+                mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                registerRequest
+                                        )
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        token = objectMapper
+                .readTree(registerResponse)
+                .get("token")
+                .asText();
+
+        user = userRepository
+                .findByEmail("john@example.com")
+                .orElseThrow();
+
         usd = usdCurrency;
 
-        LoginRequest loginRequest = new LoginRequest("john@example.com", "password123");
-        String response = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginRequest)))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        token = objectMapper.readTree(response).get("token").asText();
-
-        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(new BigDecimal("85"));
+        Mockito.when(rateService.getCurrentRate("USD"))
+                .thenReturn(new BigDecimal("85"));
     }
 
     private String authHeader() {
@@ -107,180 +128,366 @@ public class TransactionControllerIntegrationTest {
 
     @Test
     public void buy_shouldCreateHoldingAndTransaction() throws Exception {
-        String requestBody = "{\"currencyCode\":\"USD\",\"amountInr\":10000}";
 
-        mockMvc.perform(post("/api/transactions/buy")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.type").value("BUY"))
-            .andExpect(jsonPath("$.currencyCode").value("USD"))
-            .andExpect(jsonPath("$.inrAmount").value(10000))
-            .andExpect(jsonPath("$.platformFee").value(10.0));
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"amountInr\":10000}";
 
-        var holdings = holdingRepository.findByUserId(user.getId());
+        mockMvc.perform(
+                post("/api/transactions/buy")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("BUY"))
+        .andExpect(jsonPath("$.currencyCode").value("USD"))
+        .andExpect(jsonPath("$.inrAmount").value(10000))
+        .andExpect(jsonPath("$.platformFee").value(10.0));
+
+        var holdings =
+                holdingRepository.findByUserId(user.getId());
+
         assertEquals(1, holdings.size());
-        assertEquals(new BigDecimal("117.647059"), holdings.get(0).getQuantity());
 
-        var wallet = walletRepository.findByUserId(user.getId()).orElseThrow();
-        assertEquals(new BigDecimal("89990.0000"), wallet.getBalance());
+        assertEquals(
+                new BigDecimal("117.647059"),
+                holdings.get(0).getQuantity()
+        );
 
-        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        var wallet =
+                walletRepository
+                        .findByUserId(user.getId())
+                        .orElseThrow();
+
+        assertEquals(
+                new BigDecimal("89990.0000"),
+                wallet.getBalance()
+        );
+
+        var transactions =
+                transactionRepository.findByUserIdOrderByTimestampDesc(
+                        user.getId(),
+                        org.springframework.data.domain.PageRequest.of(0, 10)
+                );
+
         assertEquals(1, transactions.getContent().size());
-        assertEquals(Transaction.Type.BUY, transactions.getContent().get(0).getType());
-        assertEquals(new BigDecimal("10.0000"), transactions.getContent().get(0).getPlatformFee());
+
+        assertEquals(
+                Transaction.Type.BUY,
+                transactions.getContent().get(0).getType()
+        );
+
+        assertEquals(
+                new BigDecimal("10.0000"),
+                transactions.getContent().get(0).getPlatformFee()
+        );
     }
 
     @Test
-    public void buy_shouldFailWithInsufficientBalance() throws Exception {
-        String requestBody = "{\"currencyCode\":\"USD\",\"amountInr\":999999}";
+    public void buy_shouldFailWithInsufficientBalance()
+            throws Exception {
 
-        mockMvc.perform(post("/api/transactions/buy")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Insufficient wallet balance"));
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"amountInr\":999999}";
+
+        mockMvc.perform(
+                post("/api/transactions/buy")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("Insufficient wallet balance")
+        );
     }
 
     @Test
-    public void sell_shouldUpdateWalletAndHolding() throws Exception {
-        holdingRepository.save(new Holding(null, user, usd, new BigDecimal("100"), new BigDecimal("85"), null, null));
+    public void sell_shouldUpdateWalletAndHolding()
+            throws Exception {
 
-        String requestBody = "{\"currencyCode\":\"USD\",\"quantity\":50}";
+        holdingRepository.save(
+                new Holding(
+                        null,
+                        user,
+                        usd,
+                        new BigDecimal("100"),
+                        new BigDecimal("85"),
+                        null,
+                        null
+                )
+        );
 
-        mockMvc.perform(post("/api/transactions/sell")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.type").value("SELL"))
-            .andExpect(jsonPath("$.currencyCode").value("USD"))
-            .andExpect(jsonPath("$.inrAmount").value(4250.0))
-            .andExpect(jsonPath("$.platformFee").value(4.25))
-            .andExpect(jsonPath("$.realizedPl").value(0.0));
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"quantity\":50}";
 
-        var holdings = holdingRepository.findByUserId(user.getId());
+        mockMvc.perform(
+                post("/api/transactions/sell")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("SELL"))
+        .andExpect(jsonPath("$.currencyCode").value("USD"))
+        .andExpect(jsonPath("$.inrAmount").value(4250.0))
+        .andExpect(jsonPath("$.platformFee").value(4.25))
+        .andExpect(jsonPath("$.realizedPl").value(-4.25));
+
+        var holdings =
+                holdingRepository.findByUserId(user.getId());
+
         assertEquals(1, holdings.size());
-        assertEquals(new BigDecimal("50.000000"), holdings.get(0).getQuantity());
 
-        var wallet = walletRepository.findByUserId(user.getId()).orElseThrow();
-        assertEquals(new BigDecimal("104245.7500"), wallet.getBalance());
+        assertEquals(
+                new BigDecimal("50.000000"),
+                holdings.get(0).getQuantity()
+        );
 
-        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        var wallet =
+                walletRepository
+                        .findByUserId(user.getId())
+                        .orElseThrow();
+
+        assertEquals(
+                new BigDecimal("104245.7500"),
+                wallet.getBalance()
+        );
+
+        var transactions =
+                transactionRepository.findByUserIdOrderByTimestampDesc(
+                        user.getId(),
+                        org.springframework.data.domain.PageRequest.of(0, 10)
+                );
+
         assertEquals(1, transactions.getContent().size());
-        assertEquals(new BigDecimal("4.2500"), transactions.getContent().get(0).getPlatformFee());
-        assertEquals(new BigDecimal("0.0000"), transactions.getContent().get(0).getRealizedPl());
+
+        assertEquals(
+                new BigDecimal("4.2500"),
+                transactions.getContent().get(0).getPlatformFee()
+        );
+
+        assertEquals(
+                new BigDecimal("-4.2500"),
+                transactions.getContent().get(0).getRealizedPl()
+        );
     }
 
     @Test
-    public void sell_shouldFailWithInsufficientHoldings() throws Exception {
-        String requestBody = "{\"currencyCode\":\"USD\",\"quantity\":50}";
+    public void sell_shouldFailWithInsufficientHoldings()
+            throws Exception {
 
-        mockMvc.perform(post("/api/transactions/sell")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("No holdings found for USD"));
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"quantity\":50}";
+
+        mockMvc.perform(
+                post("/api/transactions/sell")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("No holdings found for USD")
+        );
     }
 
     @Test
-    public void buy_shouldFailWithUnavailableRate() throws Exception {
-        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(null);
-        String requestBody = "{\"currencyCode\":\"USD\",\"amountInr\":10000}";
+    public void buy_shouldFailWithUnavailableRate()
+            throws Exception {
 
-        mockMvc.perform(post("/api/transactions/buy")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(jsonPath("$.message").value("Exchange rate currently unavailable. Please try again."));
+        Mockito.when(rateService.getCurrentRate("USD"))
+                .thenReturn(null);
 
-        var holdings = holdingRepository.findByUserId(user.getId());
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"amountInr\":10000}";
+
+        mockMvc.perform(
+                post("/api/transactions/buy")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Exchange rate currently unavailable. Please try again."
+                        )
+        );
+
+        var holdings =
+                holdingRepository.findByUserId(user.getId());
+
         assertEquals(0, holdings.size());
-        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+
+        var transactions =
+                transactionRepository.findByUserIdOrderByTimestampDesc(
+                        user.getId(),
+                        org.springframework.data.domain.PageRequest.of(0, 10)
+                );
+
         assertEquals(0, transactions.getContent().size());
     }
 
     @Test
-    public void sell_shouldFailWithUnavailableRate() throws Exception {
-        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(null);
-        holdingRepository.save(new Holding(null, user, usd, new BigDecimal("100"), new BigDecimal("85"), null, null));
-        String requestBody = "{\"currencyCode\":\"USD\",\"quantity\":50}";
+    public void sell_shouldFailWithUnavailableRate()
+            throws Exception {
 
-        mockMvc.perform(post("/api/transactions/sell")
-                .header("Authorization", authHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(jsonPath("$.message").value("Exchange rate currently unavailable. Please try again."));
+        Mockito.when(rateService.getCurrentRate("USD"))
+                .thenReturn(null);
 
-        var holdings = holdingRepository.findByUserId(user.getId());
-        assertEquals(new BigDecimal("100.000000"), holdings.get(0).getQuantity());
-        var transactions = transactionRepository.findByUserIdOrderByTimestampDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 10));
+        holdingRepository.save(
+                new Holding(
+                        null,
+                        user,
+                        usd,
+                        new BigDecimal("100"),
+                        new BigDecimal("85"),
+                        null,
+                        null
+                )
+        );
+
+        String requestBody =
+                "{\"currencyCode\":\"USD\",\"quantity\":50}";
+
+        mockMvc.perform(
+                post("/api/transactions/sell")
+                        .header("Authorization", authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+        )
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Exchange rate currently unavailable. Please try again."
+                        )
+        );
+
+        var holdings =
+                holdingRepository.findByUserId(user.getId());
+
+        assertEquals(
+                new BigDecimal("100.000000"),
+                holdings.get(0).getQuantity()
+        );
+
+        var transactions =
+                transactionRepository.findByUserIdOrderByTimestampDesc(
+                        user.getId(),
+                        org.springframework.data.domain.PageRequest.of(0, 10)
+                );
+
         assertEquals(0, transactions.getContent().size());
     }
 
     @Test
-    public void getTransactions_shouldReturnUserTransactions() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader()))
-            .andExpect(status().isOk());
+    public void getTransactions_shouldReturnUserTransactions()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+        )
+        .andExpect(status().isOk());
     }
 
     @Test
-    public void getTransactions_shouldRejectNegativePage() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("page", "-1"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Page must be greater than or equal to 0"));
+    public void getTransactions_shouldRejectNegativePage()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("page", "-1")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("Page must be greater than or equal to 0")
+        );
     }
 
     @Test
-    public void getTransactions_shouldRejectZeroSize() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("size", "0"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Size must be greater than 0"));
+    public void getTransactions_shouldRejectZeroSize()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("size", "0")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("Size must be greater than 0")
+        );
     }
 
     @Test
-    public void getTransactions_shouldRejectNegativeSize() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("size", "-1"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Size must be greater than 0"));
+    public void getTransactions_shouldRejectNegativeSize()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("size", "-1")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("Size must be greater than 0")
+        );
     }
 
     @Test
-    public void getTransactions_shouldRejectInvalidSortField() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("sortBy", "user"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Invalid sort field: user"));
+    public void getTransactions_shouldRejectInvalidSortField()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("sortBy", "user")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value("Invalid sort field: user")
+        );
     }
 
     @Test
-    public void getTransactions_shouldRejectInvalidDirection() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("direction", "sideways"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Direction must be either ASC or DESC"));
+    public void getTransactions_shouldRejectInvalidDirection()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("direction", "sideways")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(
+                jsonPath("$.message")
+                        .value(
+                                "Direction must be either ASC or DESC"
+                        )
+        );
     }
 
     @Test
-    public void getTransactions_shouldAcceptValidSortFields() throws Exception {
-        mockMvc.perform(get("/api/transactions")
-                .header("Authorization", authHeader())
-                .param("sortBy", "amount")
-                .param("direction", "ASC"))
-            .andExpect(status().isOk());
+    public void getTransactions_shouldAcceptValidSortFields()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/transactions")
+                        .header("Authorization", authHeader())
+                        .param("sortBy", "amount")
+                        .param("direction", "ASC")
+        )
+        .andExpect(status().isOk());
     }
 }

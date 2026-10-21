@@ -1,14 +1,12 @@
 package com.fxwallet.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fxwallet.dto.LoginRequest;
 import com.fxwallet.dto.RegisterRequest;
 import com.fxwallet.entity.Currency;
 import com.fxwallet.entity.Holding;
+import com.fxwallet.entity.RateAlert;
 import com.fxwallet.entity.Transaction;
 import com.fxwallet.entity.User;
-import com.fxwallet.entity.Wallet;
-import com.fxwallet.entity.RateAlert;
 import com.fxwallet.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -56,16 +55,20 @@ public class SecurityIntegrationTest {
 
     @Autowired
     private RateAlertRepository rateAlertRepository;
+
     @MockBean
     private com.fxwallet.service.RateService rateService;
 
     private String userAToken;
     private String userBToken;
+
     private User userA;
     private User userB;
 
     @BeforeEach
     public void setup() throws Exception {
+
+        // Clean database
         rateAlertRepository.deleteAll();
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
@@ -73,47 +76,79 @@ public class SecurityIntegrationTest {
         userRepository.deleteAll();
         currencyRepository.deleteAll();
 
+        // Create USD currency
         Currency usd = new Currency();
         usd.setCode("USD");
         usd.setName("US Dollar");
         usd.setSymbol("$");
         usd.setActive(true);
+
         currencyRepository.save(usd);
 
-        RegisterRequest userARegister = new RegisterRequest("User A", "usera@example.com", "password123");
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userARegister)))
-            .andExpect(status().isOk());
+        // -----------------------------
+        // Register User A
+        // -----------------------------
+        RegisterRequest userARegister =
+                new RegisterRequest(
+                        "User A",
+                        "usera@example.com",
+                        "password123"
+                );
 
-        RegisterRequest userBRegister = new RegisterRequest("User B", "userb@example.com", "password456");
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userBRegister)))
-            .andExpect(status().isOk());
+        String userAResponse =
+                mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userARegister)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").exists())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
 
-        userA = userRepository.findByEmail("usera@example.com").orElseThrow();
-        userB = userRepository.findByEmail("userb@example.com").orElseThrow();
+        // Registration already returns JWT.
+        userAToken = objectMapper
+                .readTree(userAResponse)
+                .get("token")
+                .asText();
 
-        var userALogin = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new LoginRequest("usera@example.com", "password123"))))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-        userAToken = objectMapper.readTree(userALogin).get("token").asText();
+        // -----------------------------
+        // Register User B
+        // -----------------------------
+        RegisterRequest userBRegister =
+                new RegisterRequest(
+                        "User B",
+                        "userb@example.com",
+                        "password456"
+                );
 
-        var userBLogin = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new LoginRequest("userb@example.com", "password456"))))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-        userBToken = objectMapper.readTree(userBLogin).get("token").asText();
+        String userBResponse =
+                mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userBRegister)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").exists())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
 
-        Mockito.when(rateService.getCurrentRate("USD")).thenReturn(new BigDecimal("85"));
+        // Registration already returns JWT.
+        userBToken = objectMapper
+                .readTree(userBResponse)
+                .get("token")
+                .asText();
+
+        // Fetch users from DB
+        userA = userRepository
+                .findByEmail("usera@example.com")
+                .orElseThrow();
+
+        userB = userRepository
+                .findByEmail("userb@example.com")
+                .orElseThrow();
+
+        // Mock exchange rate
+        Mockito.when(rateService.getCurrentRate("USD"))
+                .thenReturn(new BigDecimal("85"));
     }
 
     private String authHeader(String token) {
@@ -122,6 +157,7 @@ public class SecurityIntegrationTest {
 
     @Test
     public void userA_shouldNotAccessUserBWallet() throws Exception {
+
         mockMvc.perform(get("/api/wallet")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk());
@@ -133,6 +169,7 @@ public class SecurityIntegrationTest {
 
     @Test
     public void userA_shouldNotAccessUserBTransactions() throws Exception {
+
         mockMvc.perform(get("/api/transactions")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk());
@@ -144,6 +181,7 @@ public class SecurityIntegrationTest {
 
     @Test
     public void userA_shouldNotAccessUserBPortfolio() throws Exception {
+
         mockMvc.perform(get("/api/portfolio")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk());
@@ -155,6 +193,7 @@ public class SecurityIntegrationTest {
 
     @Test
     public void userA_shouldNotAccessUserBAlerts() throws Exception {
+
         mockMvc.perform(get("/api/alerts")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk());
@@ -166,9 +205,14 @@ public class SecurityIntegrationTest {
 
     @Test
     public void users_shouldOnlySeeTheirOwnTransactions() throws Exception {
-        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+
+        Currency usd =
+                currencyRepository
+                        .findByCode("USD")
+                        .orElseThrow();
 
         Transaction bTransaction = new Transaction();
+
         bTransaction.setUser(userB);
         bTransaction.setCurrency(usd);
         bTransaction.setType(Transaction.Type.BUY);
@@ -177,13 +221,16 @@ public class SecurityIntegrationTest {
         bTransaction.setExchangeRate(new BigDecimal("85"));
         bTransaction.setRealizedPl(BigDecimal.ZERO);
         bTransaction.setPlatformFee(BigDecimal.ONE);
+
         transactionRepository.save(bTransaction);
 
+        // User A should see zero transactions
         mockMvc.perform(get("/api/transactions")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isEmpty());
 
+        // User B should see his transaction
         mockMvc.perform(get("/api/transactions")
                 .header("Authorization", authHeader(userBToken)))
             .andExpect(status().isOk())
@@ -192,16 +239,32 @@ public class SecurityIntegrationTest {
 
     @Test
     public void users_shouldOnlySeeTheirOwnPortfolio() throws Exception {
-        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
 
-        holdingRepository.save(new Holding(null, userB, usd, new BigDecimal("25"),
-                new BigDecimal("85"), null, null));
+        Currency usd =
+                currencyRepository
+                        .findByCode("USD")
+                        .orElseThrow();
 
+        Holding holding =
+                new Holding(
+                        null,
+                        userB,
+                        usd,
+                        new BigDecimal("25"),
+                        new BigDecimal("85"),
+                        null,
+                        null
+                );
+
+        holdingRepository.save(holding);
+
+        // User A should see empty portfolio
         mockMvc.perform(get("/api/portfolio")
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.holdings").isEmpty());
 
+        // User B should see his USD holding
         mockMvc.perform(get("/api/portfolio")
                 .header("Authorization", authHeader(userBToken)))
             .andExpect(status().isOk())
@@ -211,25 +274,39 @@ public class SecurityIntegrationTest {
 
     @Test
     public void users_shouldNotDeleteAnotherUsersAlert() throws Exception {
-        Currency usd = currencyRepository.findByCode("USD").orElseThrow();
+
+        Currency usd =
+                currencyRepository
+                        .findByCode("USD")
+                        .orElseThrow();
 
         RateAlert alert = new RateAlert();
+
         alert.setUser(userB);
         alert.setCurrency(usd);
         alert.setTargetRate(new BigDecimal("90"));
         alert.setTriggered(false);
+
         rateAlertRepository.save(alert);
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .delete("/api/alerts/" + alert.getId())
+        // User A tries to delete User B's alert.
+        // Should be rejected because alert belongs to User B.
+        mockMvc.perform(delete("/api/alerts/" + alert.getId())
                 .header("Authorization", authHeader(userAToken)))
             .andExpect(status().isNotFound());
 
-        assertEquals(1, rateAlertRepository.findByUserId(userB.getId()).size());
+        // User B's alert must still exist.
+        assertEquals(
+                1,
+                rateAlertRepository
+                        .findByUserId(userB.getId())
+                        .size()
+        );
     }
 
     @Test
     public void unauthorizedRequest_shouldBeRejected() throws Exception {
+
         mockMvc.perform(get("/api/wallet"))
             .andExpect(status().isForbidden());
 

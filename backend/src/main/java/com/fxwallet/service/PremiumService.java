@@ -17,7 +17,8 @@ import java.time.LocalDate;
 @Service
 public class PremiumService {
 
-    private static final BigDecimal PREMIUM_PRICE = new BigDecimal("999.00");
+    private static final BigDecimal PREMIUM_PRICE =
+            new BigDecimal("999.00");
 
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
@@ -29,17 +30,26 @@ public class PremiumService {
             WalletRepository walletRepository,
             PremiumSubscriptionRepository premiumSubscriptionRepository,
             OtpService otpService) {
+
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
-        this.premiumSubscriptionRepository = premiumSubscriptionRepository;
+        this.premiumSubscriptionRepository =
+                premiumSubscriptionRepository;
         this.otpService = otpService;
     }
 
+    /**
+     * Sends the Premium purchase verification OTP.
+     */
     public void sendPurchaseVerificationCode() {
         otpService.sendPremiumPurchaseOtp(currentUser());
     }
 
+    /**
+     * Verifies the Premium purchase OTP and activates Premium.
+     */
     public User verifyPurchaseAndActivate(String otp) {
+
         User user = currentUser();
 
         try {
@@ -55,70 +65,164 @@ public class PremiumService {
         return activatePremium();
     }
 
+    /**
+     * Gets the currently authenticated user.
+     */
     private User currentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalArgumentException("User is not authenticated");
-        }
+        Authentication authentication =
+                SecurityContextHolder.getContext()
+                        .getAuthentication();
 
-        return userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-    }
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
 
-    @Transactional
-    public User activatePremium() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalArgumentException("User is not authenticated");
-        }
-
-        User user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        Wallet wallet = walletRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Wallet not found"));
-
-        BigDecimal currentBalance = wallet.getBalance();
-
-        if (currentBalance == null || currentBalance.compareTo(PREMIUM_PRICE) < 0) {
             throw new IllegalArgumentException(
-                    "Insufficient virtual wallet balance. ₹999 is required."
+                    "User is not authenticated"
             );
         }
 
-        PremiumSubscription existingSubscription =
-                premiumSubscriptionRepository.findByUserId(user.getId()).orElse(null);
+        return userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        ));
+    }
 
-        if (existingSubscription != null &&
-                existingSubscription.getStatus() == PremiumSubscription.SubscriptionStatus.ACTIVE) {
+    /**
+     * Activates Premium and deducts ₹999.
+     *
+     * The wallet row is locked using PESSIMISTIC_WRITE.
+     * This prevents concurrent requests from spending the same
+     * wallet balance.
+     */
+    @Transactional
+    public User activatePremium() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalArgumentException(
+                    "User is not authenticated"
+            );
+        }
+
+        User user = userRepository.findByEmail(
+                authentication.getName()
+        ).orElseThrow(() ->
+                new IllegalArgumentException(
+                        "User not found"
+                ));
+
+        /*
+         * IMPORTANT:
+         *
+         * Lock the wallet row before reading its balance.
+         *
+         * If two purchase requests arrive simultaneously,
+         * the second request waits until the first transaction
+         * finishes.
+         */
+        Wallet wallet = walletRepository
+                .findByUserIdForUpdate(user.getId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Wallet not found"
+                        ));
+
+        /*
+         * Check whether Premium is already active
+         * while holding the wallet lock.
+         */
+        PremiumSubscription existingSubscription =
+                premiumSubscriptionRepository
+                        .findByUserId(user.getId())
+                        .orElse(null);
+
+        if (existingSubscription != null
+                && existingSubscription.getStatus()
+                == PremiumSubscription.SubscriptionStatus.ACTIVE) {
+
             throw new IllegalArgumentException(
                     "Premium subscription is already active."
             );
         }
 
-        wallet.setBalance(currentBalance.subtract(PREMIUM_PRICE));
+        /*
+         * Read the balance AFTER acquiring the lock.
+         */
+        BigDecimal currentBalance =
+                wallet.getBalance();
+
+        if (currentBalance == null
+                || currentBalance.compareTo(PREMIUM_PRICE) < 0) {
+
+            throw new IllegalArgumentException(
+                    "Insufficient virtual wallet balance. ₹999 is required."
+            );
+        }
+
+        /*
+         * Deduct Premium price.
+         */
+        wallet.setBalance(
+                currentBalance.subtract(PREMIUM_PRICE)
+        );
+
         walletRepository.save(wallet);
 
+        /*
+         * Activate Premium role/type.
+         */
         user.setUserType(User.UserType.PREMIUM);
+
         userRepository.save(user);
 
+        /*
+         * Create or reactivate subscription.
+         */
         PremiumSubscription subscription;
 
         if (existingSubscription == null) {
-            subscription = new PremiumSubscription();
+
+            subscription =
+                    new PremiumSubscription();
+
         } else {
-            subscription = existingSubscription;
-            subscription.setMonthlyPrice(PREMIUM_PRICE);
-            subscription.setBillingCycle(PremiumSubscription.BillingCycle.MONTHLY);
-            subscription.setStatus(PremiumSubscription.SubscriptionStatus.ACTIVE);
-            subscription.setStartDate(LocalDate.now());
-            subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+
+            subscription =
+                    existingSubscription;
+
+            subscription.setMonthlyPrice(
+                    PREMIUM_PRICE
+            );
+
+            subscription.setBillingCycle(
+                    PremiumSubscription.BillingCycle.MONTHLY
+            );
+
+            subscription.setStatus(
+                    PremiumSubscription.SubscriptionStatus.ACTIVE
+            );
+
+            subscription.setStartDate(
+                    LocalDate.now()
+            );
+
+            subscription.setNextBillingDate(
+                    LocalDate.now().plusMonths(1)
+            );
         }
 
         subscription.setUser(user);
-        premiumSubscriptionRepository.save(subscription);
+
+        premiumSubscriptionRepository.save(
+                subscription
+        );
 
         return user;
     }

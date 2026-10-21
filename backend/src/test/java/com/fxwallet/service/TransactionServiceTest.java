@@ -2,13 +2,20 @@ package com.fxwallet.service;
 
 import com.fxwallet.dto.BuyRequest;
 import com.fxwallet.dto.SellRequest;
-import com.fxwallet.entity.*;
+import com.fxwallet.dto.TransactionResponse;
+import com.fxwallet.entity.Currency;
+import com.fxwallet.entity.Holding;
+import com.fxwallet.entity.Transaction;
+import com.fxwallet.entity.User;
+import com.fxwallet.entity.Wallet;
 import com.fxwallet.exception.ExchangeRateUnavailableException;
-import com.fxwallet.exception.InsufficientBalanceException;
 import com.fxwallet.exception.InsufficientHoldingsException;
 import com.fxwallet.exception.ResourceNotFoundException;
-import com.fxwallet.repository.*;
-import com.fxwallet.util.BigDecimalUtil;
+import com.fxwallet.repository.CurrencyRepository;
+import com.fxwallet.repository.HoldingRepository;
+import com.fxwallet.repository.TransactionRepository;
+import com.fxwallet.repository.UserRepository;
+import com.fxwallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,7 +94,7 @@ public class TransactionServiceTest {
     }
 
     @Test
-    public void sell_shouldChargePlatformFeeWithoutChangingRealizedPlDefinition() {
+    public void sell_shouldChargePlatformFeeAndReduceRealizedPl() {
         Currency currency = new Currency();
         currency.setId(1L);
         currency.setCode("USD");
@@ -113,12 +120,12 @@ public class TransactionServiceTest {
 
         TransactionResponse response = transactionService.sell(new SellRequest("USD", new BigDecimal("10")));
 
-        assertEquals(new BigDecimal("8.5000"), response.platformFee());
-        assertEquals(new BigDecimal("100841.5000"), wallet.getBalance());
-        assertEquals(new BigDecimal("50.0000"), response.realizedPl());
+        assertEquals(new BigDecimal("0.8500"), response.platformFee());
+        assertEquals(new BigDecimal("100849.1500"), wallet.getBalance());
+        assertEquals(new BigDecimal("49.1500"), response.realizedPl());
         verify(transactionRepository).save(argThat(tx ->
-                tx.getPlatformFee().compareTo(new BigDecimal("8.5000")) == 0
-                        && tx.getRealizedPl().compareTo(new BigDecimal("50.0000")) == 0));
+        tx.getPlatformFee().compareTo(new BigDecimal("0.8500")) == 0
+                && tx.getRealizedPl().compareTo(new BigDecimal("49.1500")) == 0));
     }
 
     @Test
