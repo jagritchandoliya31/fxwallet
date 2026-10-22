@@ -7,14 +7,15 @@ import com.fxwallet.dto.RegisterRequest;
 import com.fxwallet.entity.OtpVerification;
 import com.fxwallet.entity.User;
 import com.fxwallet.entity.Wallet;
+import com.fxwallet.exception.InvalidOtpException;
 import com.fxwallet.repository.UserRepository;
 import com.fxwallet.repository.WalletRepository;
 import com.fxwallet.security.JwtUtil;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -152,7 +153,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new BadCredentialsException("Invalid verification code")
+                        new InvalidOtpException("Invalid or expired OTP")
                 );
 
         try {
@@ -168,8 +169,8 @@ public class AuthService {
             /*
              * Do not expose internal OTP failure details.
              */
-            throw new BadCredentialsException(
-                    "Invalid verification code"
+            throw new InvalidOtpException(
+                    "Invalid or expired OTP"
             );
         }
 
